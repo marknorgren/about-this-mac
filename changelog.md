@@ -2,6 +2,30 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.0] - 2024-02-10
+
+### Added
+
+- feat: Add battery information gathering
+- feat: Add multiple output formats (text, JSON, YAML, markdown, simple, public)
+- feat: Add comprehensive test suite
+- feat: Add GitHub Actions CI workflow for macOS
+- feat: Add proper Python package structure
+
+### Changed
+
+- refactor: Split functionality into modules (hardware, battery, utils)
+- refactor: Improve error handling and logging
+- refactor: Add type hints throughout the codebase
+- refactor: Use dataclasses for structured data
+
+### Fixed
+
+- fix: Handle missing battery gracefully
+- fix: Handle permission issues gracefully
+- fix: Add proper type annotations
+- fix: Use safe test data in test suite
+
 ## [0.1.1] - 2024-02-10
 
 ### Added

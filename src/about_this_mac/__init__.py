@@ -1,14 +1,15 @@
 """Root package for about-this-mac."""
+
 from .battery import BatteryInfo, BatteryInfoGatherer
 from .hardware import MacInfoGatherer, HardwareInfo, MemoryInfo, StorageInfo
 
-__version__ = "0.1.1"
+__version__ = "0.2.0"
 
 __all__ = [
-    'BatteryInfo',
-    'BatteryInfoGatherer',
-    'MacInfoGatherer',
-    'HardwareInfo',
-    'MemoryInfo',
-    'StorageInfo',
+    "BatteryInfo",
+    "BatteryInfoGatherer",
+    "MacInfoGatherer",
+    "HardwareInfo",
+    "MemoryInfo",
+    "StorageInfo",
 ]
