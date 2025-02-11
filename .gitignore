@@ -36,6 +36,12 @@ mac-info-*.md
 mac-info-*.json
 mac-info-*.yaml
 
+# Coverage
+.coverage
+htmlcov/
+coverage.xml
+.pytest_cache/
+
 # Logs
 *.log
 
