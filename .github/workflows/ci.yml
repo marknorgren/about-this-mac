@@ -16,34 +16,84 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python ${{ matrix.python-version }}
+      - name: 🐍 Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
           cache: "pip"
 
-      - name: Install just
+      - name: 🛠️ Install just
         run: |
           brew install just
 
-      - name: Install dependencies
+      - name: 📦 Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -e ".[dev]"
 
-      - name: Check formatting
+      - name: 🎨 Check formatting
         run: |
           just fmt-check
 
-      - name: Run type checking
+      - name: ✅ Run type checking
         run: |
           just type-check
 
-      - name: Run linting
+      - name: 🔍 Run linting
         run: |
           just lint
 
-      - name: Run tests with coverage
+      - name: 🧪 Run tests with coverage
         run: |
           pytest --cov=src/about_this_mac --cov-report=term-missing:skip-covered --cov-report=html tests/
           echo "Coverage report saved to htmlcov/index.html"
+
+  dogfood:
+    needs: test
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: 🛠️ Install just
+        run: |
+          brew install just
+
+      - name: 📦 Install package
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+
+      - name: 📁 Create output directory
+        run: mkdir -p reports
+
+      - name: 🔄 Run tool in various formats
+        run: |
+          # Run in different formats and save outputs
+          about-this-mac --format text > reports/report.txt
+          about-this-mac --format json > reports/report.json
+          about-this-mac --format yaml > reports/report.yaml
+          about-this-mac --format markdown > reports/report.md
+          about-this-mac --format public > reports/report_public.txt
+          about-this-mac --format simple > reports/report_simple.txt
+
+          # Also save raw information for debugging
+          about-this-mac --hardware-info > reports/raw_hardware.txt
+          about-this-mac --power-info > reports/raw_power.txt
+          about-this-mac --graphics-info > reports/raw_graphics.txt
+          about-this-mac --storage-info > reports/raw_storage.txt
+          about-this-mac --memory-info > reports/raw_memory.txt
+          about-this-mac --audio-info > reports/raw_audio.txt
+          about-this-mac --network-info > reports/raw_network.txt
+
+      - name: 📤 Upload reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: mac-reports
+          path: reports/
+          retention-days: 14

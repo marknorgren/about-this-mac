@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- ci: Add dogfooding step to CI that runs the tool and saves outputs as artifacts
+- feat: Add battery information gathering
+- feat: Add multiple output formats (text, JSON, YAML, markdown, simple, public)
+- feat: Add comprehensive test suite
+- feat: Add GitHub Actions CI workflow for macOS
+- feat: Add proper Python package structure
+
 ### Changed
 
 - refactor: Improve code quality and linting configuration
