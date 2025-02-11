@@ -45,13 +45,5 @@ jobs:
 
       - name: Run tests with coverage
         run: |
-          just test-cov
-
-      - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v4
-        env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-        with:
-          files: ./coverage.xml
-          fail_ci_if_error: true
-          verbose: true
+          pytest --cov=src/about_this_mac --cov-report=term-missing:skip-covered --cov-report=html tests/
+          echo "Coverage report saved to htmlcov/index.html"
