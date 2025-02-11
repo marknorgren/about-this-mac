@@ -73,92 +73,81 @@ The script uses various macOS system commands to gather information:
 
 ## Installation
 
-No installation required. Run directly from GitHub:
+### Using pip (Recommended)
 
 ```sh
-curl -sSL https://raw.githubusercontent.com/user/repo/main/about-this-mac.py | python3
+pip install about-this-mac
 ```
 
-Or clone and run locally:
+### Development Installation
+
+Clone the repository and install in development mode:
 
 ```sh
 git clone https://github.com/user/about-this-mac.git
 cd about-this-mac
-pip install -r requirements.txt
+just setup  # Install dependencies
+just dev-setup  # Install in development mode
 ```
 
 ## Usage
 
-### Basic Usage
+### Quick Start
 
-The script can run in two modes:
-
-1. **Standard Mode** - Basic information without administrator privileges:
+The easiest way to use the tool is through the provided `just` commands:
 
 ```sh
-python3 about-this-mac.py
+# Basic hardware info (no sudo required)
+just info
+
+# Full hardware info (requires sudo)
+just info-full
+
+# Simple output like "About This Mac"
+just simple
+
+# Sales-friendly public output
+just public
+
+# Save detailed markdown report
+just report
+
+# Get output in JSON format
+just json
+
+# Get output in YAML format
+just yaml
 ```
 
-2. **Full Information Mode** - Complete system information with administrator privileges:
+### Command Line Options
+
+You can also run the CLI directly with various options:
 
 ```sh
-sudo python3 about-this-mac.py
+# Basic usage
+python3 -m about_this_mac
+
+# Choose output format
+python3 -m about_this_mac --format [text|json|yaml|markdown|public|simple]
+
+# Show specific section
+python3 -m about_this_mac --section [hardware|battery|all]
+
+# Save to file
+python3 -m about_this_mac --output report.md
+
+# Show verbose output
+python3 -m about_this_mac --verbose
+
+# Show raw information
+python3 -m about_this_mac --hardware-info  # Raw hardware info
+python3 -m about_this_mac --power-info     # Raw power info
+python3 -m about_this_mac --graphics-info  # Raw graphics info
+python3 -m about_this_mac --storage-info   # Raw storage info
+python3 -m about_this_mac --memory-info    # Raw memory info
+python3 -m about_this_mac --audio-info     # Raw audio info
+python3 -m about_this_mac --network-info   # Raw network info
 ```
-
-### Raw Data Mode
-
-View raw output from specific data sources:
-
-```sh
-# View raw hardware information
-python3 about-this-mac.py --hardware-info
-
-# View raw battery information
-python3 about-this-mac.py --power-info
-
-# View raw graphics information
-python3 about-this-mac.py --graphics-info
-
-# View raw storage information
-python3 about-this-mac.py --storage-info
-
-# View raw memory information
-python3 about-this-mac.py --memory-info
-
-# View raw audio information
-python3 about-this-mac.py --audio-info
-
-# View raw network information
-python3 about-this-mac.py --network-info
-```
-
-### Output Formats
-
-```sh
-# Output as JSON
-python3 about-this-mac.py --format json
-
-# Output as YAML
-python3 about-this-mac.py --format yaml
-
-# Output specific sections
-python3 about-this-mac.py --section battery
-python3 about-this-mac.py --section hardware
-```
-
-### Options
-
-- `--format`: Output format (text, json, yaml)
-- `--section`: Specific section to display (hardware, battery, all)
-- `--output`: Save output to file
-- `--verbose`: Show detailed debug information
-- `--hardware-info`: Show raw hardware information
-- `--power-info`: Show raw power information
-- `--graphics-info`: Show raw graphics information
-- `--storage-info`: Show raw storage information
-- `--memory-info`: Show raw memory information
-- `--audio-info`: Show raw audio information
-- `--network-info`: Show raw network information
 
 ### Permission Levels
 
@@ -180,6 +169,42 @@ The script provides different levels of information based on permissions:
 - Graphics card details
 - Detailed audio device information
 - Full system profiler data
+
+### Output Formats
+
+1. **Text** (default): Detailed information in a readable format
+2. **Simple**: Basic information similar to About This Mac
+3. **Public**: Sales-friendly format for listings
+4. **JSON**: Structured data in JSON format
+5. **YAML**: Structured data in YAML format
+6. **Markdown**: Formatted report with sections and details
+
+### Development Commands
+
+The project includes several development commands via `just`:
+
+```sh
+# Run tests
+just test
+
+# Run tests with coverage
+just test-cov
+
+# Format code
+just fmt
+
+# Run type checking
+just type-check
+
+# Run linting
+just lint
+
+# Run all checks
+just check
+
+# Clean generated files
+just clean
+```
 
 ## Error Handling
 
