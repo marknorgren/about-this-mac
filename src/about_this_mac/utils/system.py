@@ -39,11 +39,20 @@ def parse_system_profiler_data(data: Dict[str, Any], data_type: str) -> Optional
         data_type: The data type to extract (e.g., 'SPHardwareDataType')
         
     Returns:
-        Parsed data dictionary or None if not found
+        Parsed data dictionary or None if invalid data.
+        Returns empty dict if data type is missing or empty list.
     """
     try:
-        return data.get(data_type, [{}])[0]
-    except (KeyError, IndexError):
+        # Get the data array for the specified type
+        data_array = data.get(data_type)
+        
+        # Handle invalid data type (None or non-list)
+        if data_array is None or not isinstance(data_array, list):
+            return None
+            
+        # Return first item if exists, empty dict otherwise
+        return data_array[0] if data_array else {}
+    except (KeyError, IndexError, TypeError):
         return None
 
 def is_apple_silicon() -> bool:
