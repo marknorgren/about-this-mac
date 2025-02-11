@@ -1,4 +1,5 @@
 """Hardware module for about-this-mac."""
+
 from .hardware_info import (
     MacInfoGatherer,
     HardwareInfo,
@@ -7,8 +8,8 @@ from .hardware_info import (
 )
 
 __all__ = [
-    'MacInfoGatherer',
-    'HardwareInfo',
-    'MemoryInfo',
-    'StorageInfo',
+    "MacInfoGatherer",
+    "HardwareInfo",
+    "MemoryInfo",
+    "StorageInfo",
 ]

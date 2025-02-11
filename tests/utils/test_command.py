@@ -1,8 +1,8 @@
-"""Tests for command utility functions."""
+"""Tests for command utilities."""
 
 import subprocess
-import pytest
 from unittest.mock import patch, MagicMock
+
 from about_this_mac.utils.command import run_command, get_sysctl_value
 
 

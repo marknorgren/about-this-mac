@@ -33,7 +33,7 @@ jobs:
 
       - name: Check formatting
         run: |
-          just fmt
+          just fmt-check
 
       - name: Run type checking
         run: |

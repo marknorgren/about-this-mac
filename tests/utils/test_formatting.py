@@ -1,17 +1,18 @@
-"""Tests for formatting utility functions."""
+"""Tests for formatting utilities."""
 
 import json
+from typing import Dict, Any
+
 import yaml
-from datetime import datetime
+
 from about_this_mac.utils.formatting import (
     format_size,
     format_uptime,
-    format_bool,
-    format_output_as_json,
     format_output_as_yaml,
+    format_output_as_json,
     format_output_as_markdown,
+    format_bool,
 )
-from typing import Dict, Any
 
 
 def test_format_size_bytes() -> None:
@@ -78,16 +79,15 @@ def test_format_output_as_yaml() -> None:
     """Test formatting output as YAML."""
     data: Dict[str, Any] = {"test": "value", "number": 42}
     result = format_output_as_yaml(data)
+    assert isinstance(result, str)
     assert yaml.safe_load(result) == data
-    assert "test: value" in result
-    assert "number: 42" in result
 
 
 def test_format_output_as_markdown_minimal() -> None:
     """Test formatting minimal output as markdown."""
     data: Dict[str, Any] = {}
     result = format_output_as_markdown(data)
-    assert "# Mac System Information" in result
+    assert result.startswith("# Mac System Information")
     assert "*Generated on" in result
 
 
@@ -180,4 +180,4 @@ def test_format_output_as_markdown_with_battery() -> None:
     assert "**Current Charge:** 3584 mAh" in result
     assert "**Health:** 79.6%" in result
     assert "**Temperature:** 30.3°C / 86.5°F" in result
-    assert "**Low Power Mode:** Disabled"
+    assert "**Low Power Mode:** Disabled" in result

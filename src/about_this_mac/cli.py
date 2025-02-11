@@ -5,24 +5,14 @@
 import argparse
 import json
 import logging
-import os
-import platform
-import subprocess
 import sys
-import time
-import yaml
 from dataclasses import asdict
 from datetime import datetime
 from typing import Dict, Optional, Any
 
-from about_this_mac import (
-    BatteryInfo,
-    BatteryInfoGatherer,
-    MacInfoGatherer,
-    HardwareInfo,
-    MemoryInfo,
-    StorageInfo,
-)
+import yaml
+
+from about_this_mac import MacInfoGatherer
 from about_this_mac import __version__
 
 # Configure logging
@@ -74,7 +64,9 @@ def format_output(
                     "",
                     "### Processor",
                     f"- **Chip:** {hw['processor']}",
-                    f"- **CPU Cores:** {hw['cpu_cores']} ({hw['performance_cores']} performance and {hw['efficiency_cores']} efficiency)",
+                    "- **CPU Cores:** "
+                    f"{hw['cpu_cores']} ({hw['performance_cores']} performance and "
+                    f"{hw['efficiency_cores']} efficiency)",
                     f"- **GPU Cores:** {hw['gpu_cores']}",
                     "",
                     "### Memory",
@@ -118,7 +110,9 @@ def format_output(
             output.extend(
                 [
                     "### Wireless",
-                    f"- **Bluetooth:** {hw['bluetooth_chipset']} ({hw['bluetooth_firmware']}) via {hw['bluetooth_transport']}",
+                    "- **Bluetooth:** "
+                    f"{hw['bluetooth_chipset']} ({hw['bluetooth_firmware']}) "
+                    f"via {hw['bluetooth_transport']}",
                     "",
                     "### System Software",
                     f"- **macOS Version:** {hw['macos_version']}",
@@ -141,7 +135,9 @@ def format_output(
                     f"- **Design Capacity:** {bat['design_capacity']}",
                     f"- **Manufacture Date:** {bat['manufacture_date']}",
                     f"- **Cycle Count:** {bat['cycle_count']}",
-                    f"- **Temperature:** {bat['temperature_celsius']:.1f}°C / {bat['temperature_fahrenheit']:.1f}°F",
+                    "- **Temperature:** "
+                    f"{bat['temperature_celsius']:.1f}°C / "
+                    f"{bat['temperature_fahrenheit']:.1f}°F",
                     f"- **Charging Power:** {bat['charging_power']:.1f} Watts",
                     f"- **Low Power Mode:** {'Enabled' if bat['low_power_mode'] else 'Disabled'}",
                 ]
@@ -166,7 +162,9 @@ def format_output(
                     "Processor",
                     "---------",
                     hw["processor"],
-                    f"CPU Cores: {hw['cpu_cores']} ({hw['performance_cores']} performance and {hw['efficiency_cores']} efficiency)",
+                    "CPU Cores: "
+                    f"{hw['cpu_cores']} ({hw['performance_cores']} performance and "
+                    f"{hw['efficiency_cores']} efficiency)",
                     f"GPU Cores: {hw['gpu_cores']}",
                     "",
                     "Memory",
@@ -215,7 +213,9 @@ def format_output(
                     "",
                     "Wireless",
                     "--------",
-                    f"Bluetooth: {hw['bluetooth_chipset']} ({hw['bluetooth_firmware']}) via {hw['bluetooth_transport']}",
+                    "Bluetooth: "
+                    f"{hw['bluetooth_chipset']} ({hw['bluetooth_firmware']}) "
+                    f"via {hw['bluetooth_transport']}",
                     "",
                     "System",
                     "------",
@@ -238,7 +238,9 @@ def format_output(
                     f"Design Capacity: {bat['design_capacity']}",
                     f"Manufacture Date: {bat['manufacture_date']}",
                     f"Cycle Count: {bat['cycle_count']}",
-                    f"Temperature: {bat['temperature_celsius']:.1f}°C / {bat['temperature_fahrenheit']:.1f}°F",
+                    "Temperature: "
+                    f"{bat['temperature_celsius']:.1f}°C / "
+                    f"{bat['temperature_fahrenheit']:.1f}°F",
                     f"Charging Power: {bat['charging_power']:.1f} Watts",
                     f"Low Power Mode: {'Enabled' if bat['low_power_mode'] else 'Disabled'}",
                 ]
@@ -263,10 +265,19 @@ def main() -> None:
         help="Information section to display",
     )
     parser.add_argument(
-        "--output", help="Save output to file (default: auto-generate filename for markdown)"
+        "--output",
+        help="Save output to file (default: auto-generate filename for markdown)",
     )
-    parser.add_argument("--verbose", action="store_true", help="Show detailed debug information")
-    parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
+    parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Show detailed debug information",
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"%(prog)s {__version__}",
+    )
 
     # Add raw data mode arguments
     parser.add_argument(
@@ -334,7 +345,8 @@ def main() -> None:
                         "=" * 60,
                         f"hw.model: {gatherer._get_sysctl_value('hw.model')}",
                         f"hw.ncpu: {gatherer._get_sysctl_value('hw.ncpu')}",
-                        f"machdep.cpu.brand_string: {gatherer._get_sysctl_value('machdep.cpu.brand_string')}",
+                        "machdep.cpu.brand_string: "
+                        f"{gatherer._get_sysctl_value('machdep.cpu.brand_string')}",
                     ]
                 )
 
@@ -401,7 +413,8 @@ def main() -> None:
                         "\nNetwork Interfaces (networksetup):",
                         "=" * 60,
                         gatherer._run_command(
-                            ["networksetup", "-listallhardwareports"], privileged=False
+                            ["networksetup", "-listallhardwareports"],
+                            privileged=False,
                         ),
                         "\nNetwork Status (netstat):",
                         "=" * 60,
@@ -436,14 +449,14 @@ def main() -> None:
                 date_str = datetime.now().strftime("%Y-%m-%d")
                 output_file = f"mac-info-{model_name}-{date_str}.md"
 
-            with open(output_file, "w") as f:
+            with open(output_file, "w", encoding="utf-8") as f:
                 f.write(output)
             print(f"Output saved to {output_file}")
         else:
             print(output)
 
     except Exception as e:
-        logger.error(f"An error occurred: {e}")
+        logger.error("An error occurred: %s", e)
         sys.exit(1)
 
 

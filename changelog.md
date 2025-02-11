@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Changed
+
+- refactor: Improve code quality and linting configuration
+- refactor: Fix import order in test files
+- refactor: Remove unused imports and arguments
+- refactor: Clean up type hints
+- chore: Add TODO.md for tracking future improvements
+
 ## [0.2.0] - 2024-02-10
 
 ### Added

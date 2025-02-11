@@ -73,13 +73,7 @@ The script uses various macOS system commands to gather information:
 
 ## Installation
 
-### Using pip (Recommended)
-
-```sh
-pip install about-this-mac
-```
-
-### Development Installation
+### From GitHub (Development)
 
 Clone the repository and install in development mode:
 
@@ -90,63 +84,58 @@ just setup  # Install dependencies
 just dev-setup  # Install in development mode
 ```
 
+### From GitHub (Direct Use)
+
+You can install directly from GitHub:
+
+```sh
+python3 -m pip install git+https://github.com/user/about-this-mac.git
+```
+
+After installation, you can run the tool using the `about-this-mac` command:
+
+```sh
+about-this-mac
+```
+
 ## Usage
 
 ### Quick Start
 
-The easiest way to use the tool is through the provided `just` commands:
+If you've cloned the repository, you can use `just` commands for common operations. To see available commands:
 
 ```sh
-# Basic hardware info (no sudo required)
-just info
-
-# Full hardware info (requires sudo)
-just info-full
-
-# Simple output like "About This Mac"
-just simple
-
-# Sales-friendly public output
-just public
-
-# Save detailed markdown report
-just report
-
-# Get output in JSON format
-just json
-
-# Get output in YAML format
-just yaml
+just
 ```
 
 ### Command Line Options
 
-You can also run the CLI directly with various options:
+You can run the tool with various options:
 
 ```sh
-# Basic usage
-python3 -m about_this_mac
+# Basic usage (after installation from GitHub)
+about-this-mac
 
-# Choose output format
-python3 -m about_this_mac --format [text|json|yaml|markdown|public|simple]
+# With specific format
+about-this-mac --format [text|json|yaml|markdown|public|simple]
 
 # Show specific section
-python3 -m about_this_mac --section [hardware|battery|all]
+about-this-mac --section [hardware|battery|all]
 
 # Save to file
-python3 -m about_this_mac --output report.md
+about-this-mac --output report.md
 
 # Show verbose output
-python3 -m about_this_mac --verbose
+about-this-mac --verbose
 
 # Show raw information
-python3 -m about_this_mac --hardware-info  # Raw hardware info
-python3 -m about_this_mac --power-info     # Raw power info
-python3 -m about_this_mac --graphics-info  # Raw graphics info
-python3 -m about_this_mac --storage-info   # Raw storage info
-python3 -m about_this_mac --memory-info    # Raw memory info
-python3 -m about_this_mac --audio-info     # Raw audio info
-python3 -m about_this_mac --network-info   # Raw network info
+about-this-mac --hardware-info  # Raw hardware info
+about-this-mac --power-info     # Raw power info
+about-this-mac --graphics-info  # Raw graphics info
+about-this-mac --storage-info   # Raw storage info
+about-this-mac --memory-info    # Raw memory info
+about-this-mac --audio-info     # Raw audio info
+about-this-mac --network-info   # Raw network info
 ```
 
 ### Permission Levels
@@ -178,33 +167,6 @@ The script provides different levels of information based on permissions:
 4. **JSON**: Structured data in JSON format
 5. **YAML**: Structured data in YAML format
 6. **Markdown**: Formatted report with sections and details
-
-### Development Commands
-
-The project includes several development commands via `just`:
-
-```sh
-# Run tests
-just test
-
-# Run tests with coverage
-just test-cov
-
-# Format code
-just fmt
-
-# Run type checking
-just type-check
-
-# Run linting
-just lint
-
-# Run all checks
-just check
-
-# Clean generated files
-just clean
-```
 
 ## Error Handling
 

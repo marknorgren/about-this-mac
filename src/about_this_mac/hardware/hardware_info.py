@@ -7,7 +7,7 @@ import subprocess
 import re
 import time
 from dataclasses import dataclass
-from typing import List, Dict, Optional, Any, Tuple
+from typing import List, Dict, Any, Tuple
 
 from about_this_mac.battery import BatteryInfoGatherer
 
@@ -469,7 +469,7 @@ class MacInfoGatherer(BatteryInfoGatherer):
             pass
         return ""
 
-    def _get_model_info(self, model_id: str, machine_name: str) -> Tuple[str, str, str]:
+    def _get_model_info(self) -> Tuple[str, str, str]:
         """Get model name, size and year from system information."""
         # Try to get marketing name from ioreg for Apple Silicon
         if platform.processor() == "arm":
@@ -484,24 +484,22 @@ class MacInfoGatherer(BatteryInfoGatherer):
                         "/dev/stdin",
                     ]
                     marketing_name = subprocess.run(
-                        plist_cmd, input=ioreg_output, capture_output=True, text=True
+                        plist_cmd, input=ioreg_output, capture_output=True, text=True, check=True
                     ).stdout.strip()
 
                     if marketing_name:
                         # Parse the marketing name which is in format "MacBook Pro (14-inch, 2023)"
-                        base_name = "MacBook Pro"  # We know it's a MacBook Pro
-                        size_match = re.search(r"\((\d+)-inch", marketing_name)
+                        model_size_match = re.search(r"\((\d+)-inch", marketing_name)
                         year_match = re.search(r"(\d{4})\)", marketing_name)
 
-                        model_size = f"{size_match.group(1)}-inch" if size_match else ""
+                        model_size = f"{model_size_match.group(1)}-inch" if model_size_match else ""
                         model_year = year_match.group(1) if year_match else ""
 
-                        return base_name, model_size, model_year
+                        return "MacBook Pro", model_size, model_year
             except Exception as e:
                 logger.debug(f"Error getting marketing name from ioreg: {e}")
 
         # Fallback to previous method if ioreg fails or for Intel Macs
-        base_name = machine_name or "Mac"
         model_size = ""
         model_year = ""
 
@@ -538,7 +536,7 @@ class MacInfoGatherer(BatteryInfoGatherer):
             except (json.JSONDecodeError, KeyError):
                 pass
 
-        return base_name, model_size, model_year
+        return "MacBook Pro", model_size, model_year
 
     def format_simple_output(self, data: Dict[str, Any]) -> str:
         """Format the output to match the simple About This Mac format."""
@@ -548,9 +546,7 @@ class MacInfoGatherer(BatteryInfoGatherer):
         hw = data["hardware"]
 
         # Format model name nicely
-        base_name, model_size, model_year = self._get_model_info(
-            hw["device_identifier"], hw.get("machine_name", "")
-        )
+        _, model_size, model_year = self._get_model_info()
 
         # Construct the full model name
         model_name = "MacBook Pro"  # Use exact name from screenshot
@@ -593,9 +589,7 @@ class MacInfoGatherer(BatteryInfoGatherer):
         hw = data["hardware"]
 
         # Format model name nicely
-        base_name, model_size, model_year = self._get_model_info(
-            hw["device_identifier"], hw.get("machine_name", "")
-        )
+        _, model_size, model_year = self._get_model_info()
 
         # Clean up processor name
         processor = hw["processor"].replace(":", "").strip()

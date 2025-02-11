@@ -26,6 +26,10 @@ test-watch:
 fmt:
     black src tests
 
+# Check if code is formatted without modifying
+fmt-check:
+    black --check src tests
+
 # Run type checking
 type-check:
     mypy src tests
@@ -34,8 +38,8 @@ type-check:
 lint:
     pylint src tests
 
-# Run all checks (format, type check, lint, test)
-check: fmt type-check lint test
+# Run all checks (format check, type check, lint, test)
+check: fmt-check type-check lint test
 
 # Run basic hardware info (no sudo required)
 info:

@@ -1,9 +1,11 @@
-"""Tests for system utility functions."""
+"""Tests for system utilities."""
 
 import subprocess
-import pytest
-from unittest.mock import patch, MagicMock
 from typing import Dict, Any
+from unittest.mock import patch, MagicMock
+
+import pytest
+
 from about_this_mac.utils.system import (
     check_macos,
     check_permissions,

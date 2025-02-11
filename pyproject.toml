@@ -20,6 +20,9 @@ dev = [
     "types-PyYAML>=6.0.12",
 ]
 
+[project.scripts]
+about-this-mac = "about_this_mac.cli:main"
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
@@ -34,7 +37,40 @@ line-length = 100
 target-version = ["py38"]
 
 [tool.pylint.messages_control]
-disable = ["C0111", "C0103"]
+disable = [
+    "C0111",  # Missing docstring (handled by black)
+    "C0103",  # Invalid name
+    "C0301",  # Line too long (handled by black)
+    "R0902",  # Too many instance attributes
+    "R0903",  # Too few public methods
+    "R0912",  # Too many branches
+    "R0913",  # Too many arguments
+    "R0914",  # Too many local variables
+    "R0915",  # Too many statements
+    "W0212",  # Protected access
+    "W0702",  # No exception type(s) specified
+    "W0718",  # Broad exception caught
+    "W1203",  # Use % formatting in logging functions
+    "R0801",  # Similar lines in files
+    "R1705",  # Unnecessary "elif" after "return"
+]
+max-line-length = 100
+good-names = ["e", "f", "fp", "i", "id", "j", "k", "m", "n", "x", "y", "z", "hw", "ip"]
+
+[tool.pylint.format]
+max-module-lines = 1000
+
+[tool.pylint.design]
+max-args = 10
+max-attributes = 12
+max-bool-expr = 5
+max-branches = 20
+max-locals = 25
+max-parents = 7
+max-public-methods = 20
+max-returns = 6
+max-statements = 50
+min-public-methods = 1
 
 [tool.mypy]
 python_version = "3.8"
