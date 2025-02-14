@@ -315,11 +315,24 @@ def main() -> None:
         action="store_true",
         help="Show raw network information from system_profiler SPNetworkDataType",
     )
+    parser.add_argument(
+        "--release-date",
+        action="store_true",
+        help="Show raw release date information",
+    )
 
     args = parser.parse_args()
 
     try:
         gatherer = MacInfoGatherer(verbose=args.verbose)
+
+        if args.release_date:
+            release_date = gatherer._get_release_date()
+            if release_date:
+                print(f"Release Date: {release_date}")
+            else:
+                print("Release date information not available")
+            return
 
         # Handle raw data mode requests
         if any(

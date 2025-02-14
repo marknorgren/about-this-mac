@@ -131,7 +131,7 @@ class MacInfoGatherer(BatteryInfoGatherer):
                 graphics_info = self._run_command(["system_profiler", "SPDisplaysDataType"])
                 if graphics_info:
                     for line in graphics_info.split("\n"):
-                        if "Apple M2" in line:
+                        if any(f"Apple M{i}" in line for i in range(1, 5)):
                             processor_name = line.strip()
                             break
 
@@ -175,12 +175,27 @@ class MacInfoGatherer(BatteryInfoGatherer):
 
             # If still not found, try to determine from the chip name
             if gpu_cores == 0 and processor_name:
-                if "M2 Max" in processor_name:
-                    gpu_cores = 30
-                elif "M2 Pro" in processor_name:
-                    gpu_cores = 19
-                elif "M2" in processor_name:
-                    gpu_cores = 10
+                # Default GPU cores for different chips
+                chip_gpu_cores = {
+                    "M1": 7,
+                    "M1 Pro": 14,
+                    "M1 Max": 24,
+                    "M1 Ultra": 48,
+                    "M2": 10,
+                    "M2 Pro": 19,
+                    "M2 Max": 38,
+                    "M2 Ultra": 76,
+                    "M3": 10,
+                    "M3 Pro": 18,
+                    "M3 Max": 40,
+                    "M4": 16,
+                    "M4 Pro": 28,
+                    "M4 Max": 40,
+                }
+                for chip, cores in chip_gpu_cores.items():
+                    if chip in processor_name:
+                        gpu_cores = cores
+                        break
 
         return processor_name, total_cores, performance_cores, efficiency_cores, gpu_cores
 
@@ -458,19 +473,112 @@ class MacInfoGatherer(BatteryInfoGatherer):
 
         try:
             width = int(resolution.split("x")[0].strip())
-            # MacBook Pro resolutions to screen sizes
-            if width == 3456:
-                return "16-inch"
-            elif width == 3024:
-                return "14-inch"
-            elif width == 2560:
-                return "13-inch"
+            # Common MacBook resolutions to screen sizes
+            resolutions = {
+                3456: "16-inch",  # M1/M2/M3 Pro/Max 16"
+                3024: "14-inch",  # M1/M2/M3 Pro/Max 14"
+                2560: "13-inch",  # M1/M2 13"
+                2880: "15-inch",  # M2 15"
+                2304: "12-inch",  # 12" MacBook
+                1440: "13-inch",  # Older 13" models
+                1680: "13-inch",  # Older 13" models
+                1920: "15-inch",  # Older 15" models
+                2880: "15-inch",  # Retina 15" models
+            }
+            return resolutions.get(width, "")
         except (ValueError, IndexError):
             pass
         return ""
 
+    def _get_release_date(self) -> Tuple[str, str, str]:
+        """Get the release date of the machine.
+        Returns:
+            Tuple of (formatted_date, raw_value, key_used)
+        """
+        try:
+            # Try different ioreg keys that might contain the release date
+            ioreg_keys = [
+                "product-release-date",
+                "product-release",
+                "product-name",
+                "target-type",
+            ]
+            
+            for key in ioreg_keys:
+                ioreg_cmd = ["/usr/sbin/ioreg", "-ar", "-k", key]
+                ioreg_output = self._run_command(ioreg_cmd)
+                if ioreg_output:
+                    plist_cmd = [
+                        "/usr/libexec/PlistBuddy",
+                        "-c",
+                        f"print 0:{key}",
+                        "/dev/stdin",
+                    ]
+                    try:
+                        release_info = subprocess.run(
+                            plist_cmd, input=ioreg_output, capture_output=True, text=True, check=True
+                        ).stdout.strip()
+                        
+                        if release_info:
+                            # Try different date formats
+                            
+                            # Format 1: Direct date (2024-03)
+                            if "-" in release_info:
+                                try:
+                                    date_parts = release_info.split("-")
+                                    if len(date_parts) >= 2:
+                                        year = date_parts[0]
+                                        month = int(date_parts[1])
+                                        month_names = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun", 
+                                                     "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+                                        return f"{month_names[month]} {year}", release_info, key
+                                except (ValueError, IndexError):
+                                    pass
+                            
+                            # Format 2: Marketing name with date (MacBook Pro (14-inch, 2024))
+                            date_match = re.search(r"\(.*?(\d{4})\)", release_info)
+                            if date_match:
+                                year = date_match.group(1)
+                                # For new models, assume March if no month info
+                                if year == "2024":
+                                    return f"Mar {year}", release_info, key
+                                return year, release_info, key
+                            
+                            # Format 3: Target type with date (J416c)
+                            if key == "target-type" and release_info.startswith("J"):
+                                # Try to get the date from system profiler as fallback
+                                hw_info = self._run_command(["system_profiler", "SPHardwareDataType", "-json"])
+                                if hw_info:
+                                    try:
+                                        hw_data = json.loads(hw_info).get("SPHardwareDataType", [{}])[0]
+                                        model_id = hw_data.get("machine_model", "")
+                                        if "Mac16,6" in model_id:  # Latest model
+                                            return "Mar 2024", release_info, key
+                                    except (json.JSONDecodeError, KeyError):
+                                        pass
+                    except subprocess.CalledProcessError:
+                        continue
+
+            # If no date found, try to determine from processor info
+            graphics_info = self._run_command(["system_profiler", "SPDisplaysDataType"])
+            if "M4" in graphics_info:
+                return "Mar 2024", "Detected from M4 chip", "graphics-info"
+            elif "M3" in graphics_info:
+                return "Oct 2023", "Detected from M3 chip", "graphics-info"
+            elif "M2" in graphics_info:
+                return "Jan 2023", "Detected from M2 chip", "graphics-info"
+            elif "M1" in graphics_info:
+                return "Nov 2020", "Detected from M1 chip", "graphics-info"
+
+        except Exception as e:
+            logger.debug(f"Error getting release date: {e}")
+        return "", "", ""
+
     def _get_model_info(self) -> Tuple[str, str, str]:
         """Get model name, size and year from system information."""
+        model_size = ""
+        model_year = ""
+
         # Try to get marketing name from ioreg for Apple Silicon
         if platform.processor() == "arm":
             try:
@@ -492,49 +600,76 @@ class MacInfoGatherer(BatteryInfoGatherer):
                         model_size_match = re.search(r"\((\d+)-inch", marketing_name)
                         year_match = re.search(r"(\d{4})\)", marketing_name)
 
-                        model_size = f"{model_size_match.group(1)}-inch" if model_size_match else ""
-                        model_year = year_match.group(1) if year_match else ""
+                        if model_size_match:
+                            model_size = f"{model_size_match.group(1)}-inch"
+                        if year_match:
+                            model_year = year_match.group(1)
 
-                        return "MacBook Pro", model_size, model_year
             except Exception as e:
                 logger.debug(f"Error getting marketing name from ioreg: {e}")
 
-        # Fallback to previous method if ioreg fails or for Intel Macs
-        model_size = ""
-        model_year = ""
-
-        # Get display info for screen size
-        displays_info = self._run_command(["system_profiler", "SPDisplaysDataType", "-json"])
-        if displays_info:
-            try:
-                displays_data = json.loads(displays_info).get("SPDisplaysDataType", [])
-                for display in displays_data:
-                    for screen in display.get("spdisplays_ndrvs", []):
-                        resolution = screen.get("_spdisplays_pixels", "")
-                        if (
-                            resolution
-                            and "internal" in screen.get("spdisplays_connection_type", "").lower()
-                        ):
-                            model_size = self._get_screen_size(resolution)
+        # If we don't have the size yet, try to get it from display info
+        if not model_size:
+            displays_info = self._run_command(["system_profiler", "SPDisplaysDataType", "-json"])
+            if displays_info:
+                try:
+                    displays_data = json.loads(displays_info).get("SPDisplaysDataType", [])
+                    for display in displays_data:
+                        for screen in display.get("spdisplays_ndrvs", []):
+                            resolution = screen.get("_spdisplays_pixels", "")
+                            if (
+                                resolution
+                                and "internal" in screen.get("spdisplays_connection_type", "").lower()
+                            ):
+                                detected_size = self._get_screen_size(resolution)
+                                if detected_size:
+                                    model_size = detected_size
+                                break
+                        if model_size:
                             break
-                    if model_size:
-                        break
-            except (json.JSONDecodeError, KeyError):
-                pass
+                except (json.JSONDecodeError, KeyError):
+                    pass
 
-        # Try to get year from system profiler
-        sw_info = self._run_command(["system_profiler", "SPSoftwareDataType", "-json"])
-        if sw_info:
-            try:
-                sw_data = json.loads(sw_info).get("SPSoftwareDataType", [{}])[0]
-                os_version = sw_data.get("os_version", "")
-                if os_version:
-                    # OS version might give us a clue about the earliest possible year
-                    year_match = re.search(r"202\d", os_version)
-                    if year_match:
-                        model_year = year_match.group(0)
-            except (json.JSONDecodeError, KeyError):
-                pass
+        # Try to get the release date first
+        release_date, raw_value, key_used = self._get_release_date()
+        if release_date:
+            # Extract year from release date (e.g., "Mar 2024" -> "2024")
+            year_match = re.search(r"20\d{2}", release_date)
+            if year_match:
+                model_year = year_match.group(0)
+
+        # If we still don't have the year, try other methods
+        if not model_year:
+            # Try system profiler
+            sw_info = self._run_command(["system_profiler", "SPSoftwareDataType", "-json"])
+            if sw_info:
+                try:
+                    sw_data = json.loads(sw_info).get("SPSoftwareDataType", [{}])[0]
+                    os_version = sw_data.get("os_version", "")
+                    if os_version:
+                        year_match = re.search(r"202\d", os_version)
+                        if year_match:
+                            model_year = year_match.group(0)
+                except (json.JSONDecodeError, KeyError):
+                    pass
+
+            # If still no year, try to determine from processor
+            if not model_year:
+                processor = self._run_command(["sysctl", "-n", "machdep.cpu.brand_string"])
+                if "M4" in processor or "M4" in str(self._get_graphics_info()):
+                    model_year = "2024"
+                elif "M3" in processor:
+                    model_year = "2023"
+                elif "M2" in processor:
+                    model_year = "2022"
+                elif "M1" in processor:
+                    model_year = "2020"
+
+        # Set defaults if we still don't have values
+        if not model_size:
+            model_size = "Unknown"
+        if not model_year:
+            model_year = "Unknown"
 
         return "MacBook Pro", model_size, model_year
 
@@ -546,10 +681,19 @@ class MacInfoGatherer(BatteryInfoGatherer):
         hw = data["hardware"]
 
         # Format model name nicely
-        _, model_size, model_year = self._get_model_info()
+        _, model_size, _ = self._get_model_info()  # Don't use the year from here
 
+        # Get the release date
+        release_date, raw_value, key_used = self._get_release_date()
+        
         # Construct the full model name
-        model_name = "MacBook Pro"  # Use exact name from screenshot
+        model_name = "MacBook Pro"
+
+        # Format the size and date line
+        if release_date:
+            size_date = f"{model_size}, {release_date}"
+        else:
+            size_date = model_size
 
         # Format memory size
         memory_size = hw["memory"]["total"].replace("GB", " GB")
@@ -561,16 +705,33 @@ class MacInfoGatherer(BatteryInfoGatherer):
         macos_version = hw["macos_version"]
         if macos_version.startswith("15"):
             macos_version = f"Sequoia {macos_version}"
+        elif macos_version.startswith("14"):
+            macos_version = f"Sonoma {macos_version}"
+        elif macos_version.startswith("13"):
+            macos_version = f"Ventura {macos_version}"
+        elif macos_version.startswith("12"):
+            macos_version = f"Monterey {macos_version}"
+        elif macos_version.startswith("11"):
+            macos_version = f"Big Sur {macos_version}"
 
         # Clean up processor name
         chip_name = hw["processor"].replace(":", "").strip()
-
-        # Format the size and year line
-        size_year = f"{model_size}, {model_year}" if model_size and model_year else model_size
+        if not chip_name:
+            # Try to determine from graphics info
+            graphics = str(hw["graphics"])
+            for i in range(1, 5):
+                if f"M{i}" in graphics:
+                    variants = ["", "Pro", "Max", "Ultra"]
+                    for variant in variants:
+                        variant_name = f"M{i} {variant}".strip()
+                        if variant_name in graphics:
+                            chip_name = f"Apple {variant_name}"
+                            break
+                    break
 
         output = [
             model_name,
-            size_year,
+            size_date,
             "",
             f"Chip          {chip_name}",
             f"Memory        {memory_size}",
@@ -590,6 +751,9 @@ class MacInfoGatherer(BatteryInfoGatherer):
 
         # Format model name nicely
         _, model_size, model_year = self._get_model_info()
+
+        # Get release date
+        release_date, _, _ = self._get_release_date()
 
         # Clean up processor name
         processor = hw["processor"].replace(":", "").strip()
@@ -619,6 +783,9 @@ class MacInfoGatherer(BatteryInfoGatherer):
             "",
             "# Model",
             f"{model_size} MacBook Pro Retina",
+            "",
+            "# Release Date",
+            release_date if release_date else f"Released in {model_year}",
             "",
             "# Processor",
             processor,
