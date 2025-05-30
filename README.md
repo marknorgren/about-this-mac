@@ -78,7 +78,7 @@ The script uses various macOS system commands to gather information:
 Clone the repository and install in development mode:
 
 ```sh
-git clone https://github.com/user/about-this-mac.git
+git clone https://github.com/marknorgren/about-this-mac.git
 cd about-this-mac
 just setup  # Install dependencies
 just dev-setup  # Install in development mode
@@ -89,13 +89,29 @@ just dev-setup  # Install in development mode
 You can install directly from GitHub:
 
 ```sh
-python3 -m pip install git+https://github.com/user/about-this-mac.git
+python3 -m pip install git+https://github.com/marknorgren/about-this-mac.git
 ```
 
 After installation, you can run the tool using the `about-this-mac` command:
 
 ```sh
 about-this-mac
+```
+
+### Run Without Installing (using uvx)
+
+You can run the tool directly without installing it using `uvx` (part of the `uv` package manager):
+
+```sh
+# Install uv if you haven't already
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Run the tool directly from GitHub
+uvx --from git+https://github.com/marknorgren/about-this-mac.git about-this-mac
+
+# Or run with specific options
+uvx --from git+https://github.com/marknorgren/about-this-mac.git about-this-mac --format json
+uvx --from git+https://github.com/marknorgren/about-this-mac.git about-this-mac --verbose
 ```
 
 ## Usage
