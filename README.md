@@ -124,12 +124,6 @@ If you've cloned the repository, you can use `just` commands for common operatio
 just
 ```
 
-If you want to run the tool without installing it, use `uvx` (see Installation section above):
-
-```sh
-uvx --from git+https://github.com/marknorgren/about-this-mac.git about-this-mac
-```
-
 ### Command Line Options
 
 You can run the tool with various options:
