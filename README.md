@@ -86,7 +86,7 @@ just dev-setup  # Install in development mode
 
 ### From GitHub (Direct Use)
 
-### Using uvx (Recommended for macOS)
+#### Using uvx (Recommended for macOS)
 
 You can also run this tool directly from GitHub without a manual clone or installation using `uvx`. `uvx` is a command-line tool that executes Python applications from various sources, including GitHub repositories, automatically managing virtual environments.
 
