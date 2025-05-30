@@ -92,7 +92,7 @@ You can also run this tool directly from GitHub without a manual clone or instal
 
 Make sure you have `uvx` installed. If not, you can install it via pip:
 ```sh
-pip install uvx
+python3 -m pip install uvx
 ```
 
 Then, run `about-this-mac` using:
