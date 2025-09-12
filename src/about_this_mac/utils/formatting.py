@@ -198,3 +198,110 @@ def format_output_as_markdown(data: Dict[str, Any]) -> str:
         )
 
     return "\n".join(output)
+
+
+def format_output_as_text(data: Dict[str, Any]) -> str:
+    """Format data as a plain text report similar to About This Mac text output.
+
+    Args:
+        data: Data dictionary to format
+
+    Returns:
+        Formatted plain text string
+    """
+    output = []
+
+    # Hardware section first
+    if "hardware" in data:
+        hw = data["hardware"]
+        output.extend(
+            [
+                "\nHARDWARE INFORMATION",
+                "===================",
+                f"Model: {hw['model_name']}",
+                f"Identifier: {hw['device_identifier']}",
+                f"Model Number: {hw['model_number']}",
+                f"Serial Number: {hw['serial_number']}",
+                "",
+                "Processor",
+                "---------",
+                hw["processor"],
+                "CPU Cores: "
+                f"{hw['cpu_cores']} ({hw['performance_cores']} performance and {hw['efficiency_cores']} efficiency)",
+                f"GPU Cores: {hw['gpu_cores']}",
+                "",
+                "Memory",
+                "------",
+                f"Total: {hw['memory']['total']}",
+                f"Type: {hw['memory']['type']}",
+                f"Speed: {hw['memory']['speed']}",
+                f"Manufacturer: {hw['memory']['manufacturer']}",
+                f"ECC: {format_bool(hw['memory']['ecc'])}",
+                "",
+                "Storage",
+                "-------",
+                f"Model: {hw['storage']['model']}",
+                f"Type: {hw['storage']['type']}",
+                f"Protocol: {hw['storage']['protocol']}",
+                f"Size: {hw['storage']['size']}",
+                f"SMART Status: {hw['storage']['smart_status']}",
+                f"TRIM Support: {format_bool(hw['storage']['trim'])}",
+                f"Internal: {format_bool(hw['storage']['internal'])}",
+                "",
+                "Graphics",
+                "--------",
+            ]
+        )
+
+        if hw["graphics"]:
+            for i, card in enumerate(hw["graphics"], 1):
+                card_info = [f"Card {i}:"]
+                if card["name"]:
+                    card_info.append(f"  Model: {card['name']}")
+                if card["vendor"]:
+                    card_info.append(f"  Vendor: {card['vendor']}")
+                if card["vram"]:
+                    card_info.append(f"  VRAM: {card['vram']}")
+                if card["resolution"]:
+                    card_info.append(f"  Resolution: {card['resolution']}")
+                if card["metal"]:
+                    card_info.append(f"  Metal Support: {card['metal']}")
+                output.extend(card_info)
+        else:
+            output.append("No graphics cards detected")
+
+        output.extend(
+            [
+                "",
+                "Wireless",
+                "--------",
+                f"Bluetooth: {hw['bluetooth_chipset']} ({hw['bluetooth_firmware']}) via {hw['bluetooth_transport']}",
+                "",
+                "System",
+                "------",
+                f"macOS Version: {hw['macos_version']}",
+                f"Build: {hw['macos_build']}",
+                f"Uptime: {hw['uptime']}",
+            ]
+        )
+
+    # Battery section if available
+    if "battery" in data:
+        bat = data["battery"]
+        output.extend(
+            [
+                "\nBATTERY INFORMATION",
+                "==================",
+                f"Current Charge: {bat['current_charge']}",
+                f"Health: {bat['health_percentage']:.1f}%",
+                f"Full Charge Capacity: {bat['full_charge_capacity']}",
+                f"Design Capacity: {bat['design_capacity']}",
+                f"Manufacture Date: {bat['manufacture_date']}",
+                f"Cycle Count: {bat['cycle_count']}",
+                f"Temperature: {bat['temperature_celsius']:.1f}°C / {bat['temperature_fahrenheit']:.1f}°F",
+                f"Charging Power: {bat['charging_power']:.1f} Watts",
+                f"Low Power Mode: {'Enabled' if bat['low_power_mode'] else 'Disabled'}",
+            ]
+        )
+
+    return "\n".join(output)

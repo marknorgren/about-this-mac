@@ -78,7 +78,7 @@ jobs:
           about-this-mac --format text > reports/report.txt
           about-this-mac --format json > reports/report.json
           about-this-mac --format yaml > reports/report.yaml
-          about-this-mac --format markdown > reports/report.md
+          about-this-mac --format markdown --output reports/report.md
           about-this-mac --format public > reports/report_public.txt
           about-this-mac --format simple > reports/report_simple.txt
 

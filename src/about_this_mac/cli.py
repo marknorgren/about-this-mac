@@ -7,13 +7,15 @@ import json
 import logging
 import sys
 from dataclasses import asdict
-from datetime import datetime
 from typing import Dict, Optional, Any
-
-import yaml
 
 from about_this_mac import MacInfoGatherer
 from about_this_mac import __version__
+from about_this_mac.utils.formatting import (
+    format_output_as_json,
+    format_output_as_yaml,
+    format_output_as_markdown,
+)
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -28,225 +30,49 @@ def format_output(
         if not gatherer:
             gatherer = MacInfoGatherer()
         return gatherer.format_simple_output(data)
-    elif format_type == "public":
+    if format_type == "public":
         if not gatherer:
             gatherer = MacInfoGatherer()
         return gatherer.format_public_output(data)
-    elif format_type == "json":
-        return json.dumps(data, indent=2)
-    elif format_type == "yaml":
-        return yaml.dump(data, sort_keys=False)
-    elif format_type == "markdown":
-        output = []
-
-        # Add title and timestamp
-        output.extend(
-            [
-                "# Mac System Information",
-                "",
-                f"*Generated on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}*",
-                "",
-            ]
-        )
-
-        # Hardware section
-        if "hardware" in data:
-            hw = data["hardware"]
-            output.extend(
-                [
-                    "## Hardware Information",
-                    "",
-                    "### System",
-                    f"- **Model:** {hw['model_name']}",
-                    f"- **Identifier:** {hw['device_identifier']}",
-                    f"- **Model Number:** {hw['model_number']}",
-                    f"- **Serial Number:** {hw['serial_number']}",
-                    "",
-                    "### Processor",
-                    f"- **Chip:** {hw['processor']}",
-                    "- **CPU Cores:** "
-                    f"{hw['cpu_cores']} ({hw['performance_cores']} performance and "
-                    f"{hw['efficiency_cores']} efficiency)",
-                    f"- **GPU Cores:** {hw['gpu_cores']}",
-                    "",
-                    "### Memory",
-                    f"- **Total:** {hw['memory']['total']}",
-                    f"- **Type:** {hw['memory']['type']}",
-                    f"- **Speed:** {hw['memory']['speed']}",
-                    f"- **Manufacturer:** {hw['memory']['manufacturer']}",
-                    f"- **ECC:** {'Yes' if hw['memory']['ecc'] else 'No'}",
-                    "",
-                    "### Storage",
-                    f"- **Model:** {hw['storage']['model']}",
-                    f"- **Type:** {hw['storage']['type']}",
-                    f"- **Protocol:** {hw['storage']['protocol']}",
-                    f"- **Size:** {hw['storage']['size']}",
-                    f"- **SMART Status:** {hw['storage']['smart_status']}",
-                    f"- **TRIM Support:** {'Yes' if hw['storage']['trim'] else 'No'}",
-                    f"- **Internal:** {'Yes' if hw['storage']['internal'] else 'No'}",
-                    "",
-                    "### Graphics",
-                ]
-            )
-
-            # Add graphics cards
-            if hw["graphics"]:
-                for i, card in enumerate(hw["graphics"], 1):
-                    output.append(f"#### Card {i}")
-                    if card["name"]:
-                        output.append(f"- **Model:** {card['name']}")
-                    if card["vendor"]:
-                        output.append(f"- **Vendor:** {card['vendor']}")
-                    if card["vram"]:
-                        output.append(f"- **VRAM:** {card['vram']}")
-                    if card["resolution"]:
-                        output.append(f"- **Resolution:** {card['resolution']}")
-                    if card["metal"]:
-                        output.append(f"- **Metal Support:** {card['metal']}")
-                    output.append("")  # Add newline after each card
-            else:
-                output.append("*No graphics cards detected*\n")
-
-            output.extend(
-                [
-                    "### Wireless",
-                    "- **Bluetooth:** "
-                    f"{hw['bluetooth_chipset']} ({hw['bluetooth_firmware']}) "
-                    f"via {hw['bluetooth_transport']}",
-                    "",
-                    "### System Software",
-                    f"- **macOS Version:** {hw['macos_version']}",
-                    f"- **Build:** {hw['macos_build']}",
-                    f"- **Uptime:** {hw['uptime']}",
-                ]
-            )
-
-        # Battery section if available
-        if "battery" in data:
-            bat = data["battery"]
-            output.extend(
-                [
-                    "",
-                    "## Battery Information",
-                    "",
-                    f"- **Current Charge:** {bat['current_charge']}",
-                    f"- **Health:** {bat['health_percentage']:.1f}%",
-                    f"- **Full Charge Capacity:** {bat['full_charge_capacity']}",
-                    f"- **Design Capacity:** {bat['design_capacity']}",
-                    f"- **Manufacture Date:** {bat['manufacture_date']}",
-                    f"- **Cycle Count:** {bat['cycle_count']}",
-                    "- **Temperature:** "
-                    f"{bat['temperature_celsius']:.1f}°C / "
-                    f"{bat['temperature_fahrenheit']:.1f}°F",
-                    f"- **Charging Power:** {bat['charging_power']:.1f} Watts",
-                    f"- **Low Power Mode:** {'Enabled' if bat['low_power_mode'] else 'Disabled'}",
-                ]
-            )
-
-        return "\n".join(output)
-    else:  # text format
-        output = []
-
-        # Hardware section first
-        if "hardware" in data:
-            hw = data["hardware"]
-            output.extend(
-                [
-                    "\nHARDWARE INFORMATION",
-                    "===================",
-                    f"Model: {hw['model_name']}",
-                    f"Identifier: {hw['device_identifier']}",
-                    f"Model Number: {hw['model_number']}",
-                    f"Serial Number: {hw['serial_number']}",
-                    "",
-                    "Processor",
-                    "---------",
-                    hw["processor"],
-                    "CPU Cores: "
-                    f"{hw['cpu_cores']} ({hw['performance_cores']} performance and "
-                    f"{hw['efficiency_cores']} efficiency)",
-                    f"GPU Cores: {hw['gpu_cores']}",
-                    "",
-                    "Memory",
-                    "------",
-                    f"Total: {hw['memory']['total']}",
-                    f"Type: {hw['memory']['type']}",
-                    f"Speed: {hw['memory']['speed']}",
-                    f"Manufacturer: {hw['memory']['manufacturer']}",
-                    f"ECC: {'Yes' if hw['memory']['ecc'] else 'No'}",
-                    "",
-                    "Storage",
-                    "-------",
-                    f"Model: {hw['storage']['model']}",
-                    f"Type: {hw['storage']['type']}",
-                    f"Protocol: {hw['storage']['protocol']}",
-                    f"Size: {hw['storage']['size']}",
-                    f"SMART Status: {hw['storage']['smart_status']}",
-                    f"TRIM Support: {'Yes' if hw['storage']['trim'] else 'No'}",
-                    f"Internal: {'Yes' if hw['storage']['internal'] else 'No'}",
-                    "",
-                    "Graphics",
-                    "--------",
-                ]
-            )
-
-            # Add graphics cards
-            if hw["graphics"]:
-                for i, card in enumerate(hw["graphics"], 1):
-                    card_info = [f"Card {i}:"]
-                    if card["name"]:
-                        card_info.append(f"  Model: {card['name']}")
-                    if card["vendor"]:
-                        card_info.append(f"  Vendor: {card['vendor']}")
-                    if card["vram"]:
-                        card_info.append(f"  VRAM: {card['vram']}")
-                    if card["resolution"]:
-                        card_info.append(f"  Resolution: {card['resolution']}")
-                    if card["metal"]:
-                        card_info.append(f"  Metal Support: {card['metal']}")
-                    output.extend(card_info)
-            else:
-                output.append("No graphics cards detected")
-
-            output.extend(
-                [
-                    "",
-                    "Wireless",
-                    "--------",
-                    "Bluetooth: "
-                    f"{hw['bluetooth_chipset']} ({hw['bluetooth_firmware']}) "
-                    f"via {hw['bluetooth_transport']}",
-                    "",
-                    "System",
-                    "------",
-                    f"macOS Version: {hw['macos_version']}",
-                    f"Build: {hw['macos_build']}",
-                    f"Uptime: {hw['uptime']}",
-                ]
-            )
-
-        # Battery section if available
-        if "battery" in data:
-            bat = data["battery"]
-            output.extend(
-                [
-                    "\nBATTERY INFORMATION",
-                    "==================",
-                    f"Current Charge: {bat['current_charge']}",
-                    f"Health: {bat['health_percentage']:.1f}%",
-                    f"Full Charge Capacity: {bat['full_charge_capacity']}",
-                    f"Design Capacity: {bat['design_capacity']}",
-                    f"Manufacture Date: {bat['manufacture_date']}",
-                    f"Cycle Count: {bat['cycle_count']}",
-                    "Temperature: "
-                    f"{bat['temperature_celsius']:.1f}°C / "
-                    f"{bat['temperature_fahrenheit']:.1f}°F",
-                    f"Charging Power: {bat['charging_power']:.1f} Watts",
-                    f"Low Power Mode: {'Enabled' if bat['low_power_mode'] else 'Disabled'}",
-                ]
-            )
-
-        return "\n".join(output)
+    if format_type == "json":
+        return format_output_as_json(data)
+    if format_type == "yaml":
+        return format_output_as_yaml(data)
+    if format_type == "markdown":
+        return format_output_as_markdown(data)
+    # default: text
+    # Build a plain-text block similar to markdown but without markup
+    # Delegate to markdown and strip simple markers if desired; for now, reuse markdown then convert basic headings
+    md = format_output_as_markdown(data)
+    lines = []
+    for line in md.splitlines():
+        if line.startswith("# "):
+            continue  # drop big title
+        if line.startswith("## "):
+            lines.extend(["", line[3:].upper(), "=" * len(line[3:])])
+            continue
+        if line.startswith("### "):
+            title = line[4:]
+            lines.extend([title, "-" * len(title)])
+            continue
+        if line.startswith("#### "):
+            lines.append(line[5:] + ":")
+            continue
+        # Convert markdown list items
+        if line.startswith("- **") and ":** " in line:
+            # e.g., - **Model:** Value -> Model: Value
+            try:
+                key, val = line[3:].split("**:", 1)
+                key = key.strip("* ")
+                lines.append(f"{key}: {val.strip()}")
+                continue
+            except ValueError:
+                pass
+        if line.startswith("- "):
+            lines.append(line[2:])
+            continue
+        lines.append(line)
+    return "\n".join(lines).strip() + "\n"
 
 
 def main() -> None:
@@ -264,10 +90,7 @@ def main() -> None:
         default="all",
         help="Information section to display",
     )
-    parser.add_argument(
-        "--output",
-        help="Save output to file (default: auto-generate filename for markdown)",
-    )
+    parser.add_argument("--output", help="Save output to file")
     parser.add_argument(
         "--verbose",
         action="store_true",
@@ -327,7 +150,7 @@ def main() -> None:
         gatherer = MacInfoGatherer(verbose=args.verbose)
 
         if args.release_date:
-            release_date = gatherer._get_release_date()
+            release_date = gatherer.get_release_date()
             if release_date:
                 print(f"Release Date: {release_date}")
             else:
@@ -353,13 +176,13 @@ def main() -> None:
                     [
                         "\nHardware Information (system_profiler SPHardwareDataType):",
                         "=" * 60,
-                        gatherer._run_command(["system_profiler", "SPHardwareDataType"]),
+                        gatherer.run_command(["system_profiler", "SPHardwareDataType"], privileged=True),
                         "\nCPU Information (sysctl):",
                         "=" * 60,
-                        f"hw.model: {gatherer._get_sysctl_value('hw.model')}",
-                        f"hw.ncpu: {gatherer._get_sysctl_value('hw.ncpu')}",
+                        f"hw.model: {gatherer.get_sysctl_value('hw.model')}",
+                        f"hw.ncpu: {gatherer.get_sysctl_value('hw.ncpu')}",
                         "machdep.cpu.brand_string: "
-                        f"{gatherer._get_sysctl_value('machdep.cpu.brand_string')}",
+                        f"{gatherer.get_sysctl_value('machdep.cpu.brand_string')}",
                     ]
                 )
 
@@ -368,10 +191,10 @@ def main() -> None:
                     [
                         "\nPower Information (system_profiler SPPowerDataType):",
                         "=" * 60,
-                        gatherer._run_command(["system_profiler", "SPPowerDataType"]),
+                        gatherer.run_command(["system_profiler", "SPPowerDataType"], privileged=True),
                         "\nBattery Status (pmset):",
                         "=" * 60,
-                        gatherer._run_command(["pmset", "-g", "batt"], privileged=False),
+                        gatherer.run_command(["pmset", "-g", "batt"], privileged=False),
                     ]
                 )
 
@@ -380,7 +203,7 @@ def main() -> None:
                     [
                         "\nGraphics Information (system_profiler SPDisplaysDataType):",
                         "=" * 60,
-                        gatherer._run_command(["system_profiler", "SPDisplaysDataType"]),
+                        gatherer.run_command(["system_profiler", "SPDisplaysDataType"], privileged=True),
                     ]
                 )
 
@@ -389,13 +212,13 @@ def main() -> None:
                     [
                         "\nNVMe Storage Information (system_profiler SPNVMeDataType):",
                         "=" * 60,
-                        gatherer._run_command(["system_profiler", "SPNVMeDataType"]),
+                        gatherer.run_command(["system_profiler", "SPNVMeDataType"], privileged=True),
                         "\nSATA Storage Information (system_profiler SPSerialATADataType):",
                         "=" * 60,
-                        gatherer._run_command(["system_profiler", "SPSerialATADataType"]),
+                        gatherer.run_command(["system_profiler", "SPSerialATADataType"], privileged=True),
                         "\nGeneral Storage Information (system_profiler SPStorageDataType):",
                         "=" * 60,
-                        gatherer._run_command(["system_profiler", "SPStorageDataType"]),
+                        gatherer.run_command(["system_profiler", "SPStorageDataType"], privileged=True),
                     ]
                 )
 
@@ -404,10 +227,10 @@ def main() -> None:
                     [
                         "\nMemory Information (system_profiler SPMemoryDataType):",
                         "=" * 60,
-                        gatherer._run_command(["system_profiler", "SPMemoryDataType"]),
+                        gatherer.run_command(["system_profiler", "SPMemoryDataType"], privileged=True),
                         "\nMemory Size (sysctl):",
                         "=" * 60,
-                        f"hw.memsize: {gatherer._get_sysctl_value('hw.memsize')}",
+                        f"hw.memsize: {gatherer.get_sysctl_value('hw.memsize')}",
                     ]
                 )
 
@@ -416,7 +239,7 @@ def main() -> None:
                     [
                         "\nAudio Information (system_profiler SPAudioDataType):",
                         "=" * 60,
-                        gatherer._run_command(["system_profiler", "SPAudioDataType"]),
+                        gatherer.run_command(["system_profiler", "SPAudioDataType"], privileged=True),
                     ]
                 )
 
@@ -425,16 +248,16 @@ def main() -> None:
                     [
                         "\nNetwork Interfaces (networksetup):",
                         "=" * 60,
-                        gatherer._run_command(
+                        gatherer.run_command(
                             ["networksetup", "-listallhardwareports"],
                             privileged=False,
                         ),
                         "\nNetwork Status (netstat):",
                         "=" * 60,
-                        gatherer._run_command(["netstat", "-i"], privileged=False),
+                        gatherer.run_command(["netstat", "-i"], privileged=False),
                         "\nBluetooth Information (system_profiler SPBluetoothDataType):",
                         "=" * 60,
-                        gatherer._run_command(["system_profiler", "SPBluetoothDataType"]),
+                        gatherer.run_command(["system_profiler", "SPBluetoothDataType"], privileged=True),
                     ]
                 )
 
@@ -453,18 +276,11 @@ def main() -> None:
         # Format the output
         output = format_output(data, args.format, gatherer)
 
-        # Handle output
-        if args.output or args.format == "markdown":
-            output_file = args.output
-            if not output_file and args.format == "markdown":
-                # Generate default filename for markdown
-                model_name = data["hardware"]["model_name"].replace(" ", "-").lower()
-                date_str = datetime.now().strftime("%Y-%m-%d")
-                output_file = f"mac-info-{model_name}-{date_str}.md"
-
-            with open(output_file, "w", encoding="utf-8") as f:
+        # Handle output: only write to a file if --output is explicitly provided
+        if args.output:
+            with open(args.output, "w", encoding="utf-8") as f:
                 f.write(output)
-            print(f"Output saved to {output_file}")
+            print(f"Output saved to {args.output}")
         else:
             print(output)
 
