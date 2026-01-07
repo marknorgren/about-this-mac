@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from typing import List, Dict, Any, Tuple
 
 from about_this_mac.battery import BatteryInfoGatherer
+from about_this_mac.utils.command import run_command_result
 
 logger = logging.getLogger(__name__)
 
@@ -98,17 +99,17 @@ class MacInfoGatherer(BatteryInfoGatherer):
 
     def _run_command(self, command: List[str], privileged: bool = False) -> str:
         """Run a shell command and return its output."""
-        try:
-            if privileged and not self.has_full_permissions:
-                logger.debug(f"Skipping privileged command: {' '.join(command)}")
-                return ""
-
-            result = subprocess.run(command, capture_output=True, text=True, check=True)
-            return result.stdout.strip()
-        except subprocess.CalledProcessError as e:
-            logger.debug(f"Command failed: {' '.join(command)}")
-            logger.debug(f"Error: {e.stderr}")
+        if privileged and not self.has_full_permissions:
+            logger.debug("Skipping privileged command: %s", " ".join(command))
             return ""
+
+        result = run_command_result(command, check=False)
+        if result.ok:
+            return result.stdout
+        logger.debug("Command failed (exit %s): %s", result.returncode, " ".join(result.command))
+        if result.stderr:
+            logger.debug("Command stderr: %s", result.stderr)
+        return ""
 
     # Public helpers for raw data access
     def run_command(self, command: List[str], privileged: bool = False) -> str:
@@ -121,13 +122,14 @@ class MacInfoGatherer(BatteryInfoGatherer):
 
     def _get_sysctl_value(self, key: str) -> str:
         """Get system information using sysctl."""
-        try:
-            result = subprocess.run(
-                ["sysctl", "-n", key], capture_output=True, text=True, check=True
-            )
-            return result.stdout.strip()
-        except:
-            return "Unknown"
+        result = run_command_result(["sysctl", "-n", key], check=False)
+        if result.ok and result.stdout:
+            return result.stdout
+        if not result.ok:
+            logger.debug("sysctl failed (exit %s) for key %s", result.returncode, key)
+            if result.stderr:
+                logger.debug("sysctl stderr: %s", result.stderr)
+        return "Unknown"
 
     def _parse_apple_silicon_info(self, hw_data: Dict[str, Any]) -> Tuple[str, int, int, int, int]:
         """Parse Apple Silicon processor details."""

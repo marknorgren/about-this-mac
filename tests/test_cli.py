@@ -2,7 +2,7 @@
 
 import io
 import os
-from contextlib import redirect_stdout
+from contextlib import redirect_stdout, redirect_stderr
 from typing import List
 
 import builtins
@@ -65,8 +65,8 @@ class FakeGatherer:
     # Methods used by CLI for raw modes are not needed in these tests
 
 
-def run_cli(monkeypatch: pytest.MonkeyPatch, args: List[str], tmpdir) -> str:
-    """Helper to run CLI with patched gatherer and capture stdout."""
+def run_cli(monkeypatch: pytest.MonkeyPatch, args: List[str], tmpdir) -> tuple[str, str]:
+    """Helper to run CLI with patched gatherer and capture stdout/stderr."""
     import about_this_mac.cli as cli
 
     # Patch the gatherer used inside cli
@@ -79,15 +79,17 @@ def run_cli(monkeypatch: pytest.MonkeyPatch, args: List[str], tmpdir) -> str:
     monkeypatch.setenv("PYTHONWARNINGS", "ignore")
     monkeypatch.setattr("sys.argv", ["about-this-mac"] + args, raising=False)
 
-    buf = io.StringIO()
-    with redirect_stdout(buf):
+    stdout_buf = io.StringIO()
+    stderr_buf = io.StringIO()
+    with redirect_stdout(stdout_buf), redirect_stderr(stderr_buf):
         cli.main()
-    return buf.getvalue()
+    return stdout_buf.getvalue(), stderr_buf.getvalue()
 
 
 def test_markdown_without_output_prints_to_stdout(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
-    output = run_cli(monkeypatch, ["--format", "markdown"], tmp_path)
+    output, errors = run_cli(monkeypatch, ["--format", "markdown"], tmp_path)
     assert output.startswith("# Mac System Information")
+    assert errors == ""
     # Ensure no auto-saved markdown file exists
     files = list(os.listdir(tmp_path))
     assert not any(name.endswith(".md") for name in files)
@@ -95,9 +97,11 @@ def test_markdown_without_output_prints_to_stdout(monkeypatch: pytest.MonkeyPatc
 
 def test_markdown_with_output_writes_file(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
     target = tmp_path / "report.md"
-    output = run_cli(monkeypatch, ["--format", "markdown", "--output", str(target)], tmp_path)
-    assert f"Output saved to {target}" in output
+    output, errors = run_cli(
+        monkeypatch, ["--format", "markdown", "--output", str(target)], tmp_path
+    )
+    assert output == ""
+    assert f"Output saved to {target}" in errors
     assert target.exists()
     content = target.read_text(encoding="utf-8")
     assert content.startswith("# Mac System Information")
-

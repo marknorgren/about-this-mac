@@ -3,8 +3,8 @@
 """Command-line interface for about-this-mac."""
 
 import argparse
-import json
 import logging
+import os
 import sys
 from dataclasses import asdict
 from typing import Dict, Optional, Any
@@ -15,15 +15,17 @@ from about_this_mac.utils.formatting import (
     format_output_as_json,
     format_output_as_yaml,
     format_output_as_markdown,
+    format_output_as_text,
 )
 
-# Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 
 def format_output(
-    data: Dict[str, Any], format_type: str, gatherer: Optional[MacInfoGatherer] = None
+    data: Dict[str, Any],
+    format_type: str,
+    gatherer: Optional[MacInfoGatherer] = None,
+    use_color: bool = False,
 ) -> str:
     """Format the output according to the specified format."""
     if format_type == "simple":
@@ -40,62 +42,108 @@ def format_output(
         return format_output_as_yaml(data)
     if format_type == "markdown":
         return format_output_as_markdown(data)
+    if format_type == "text":
+        return format_output_as_text(data, use_color=use_color)
     # default: text
-    # Build a plain-text block similar to markdown but without markup
-    # Delegate to markdown and strip simple markers if desired; for now, reuse markdown then convert basic headings
-    md = format_output_as_markdown(data)
-    lines = []
-    for line in md.splitlines():
-        if line.startswith("# "):
-            continue  # drop big title
-        if line.startswith("## "):
-            lines.extend(["", line[3:].upper(), "=" * len(line[3:])])
-            continue
-        if line.startswith("### "):
-            title = line[4:]
-            lines.extend([title, "-" * len(title)])
-            continue
-        if line.startswith("#### "):
-            lines.append(line[5:] + ":")
-            continue
-        # Convert markdown list items
-        if line.startswith("- **") and ":** " in line:
-            # e.g., - **Model:** Value -> Model: Value
-            try:
-                key, val = line[3:].split("**:", 1)
-                key = key.strip("* ")
-                lines.append(f"{key}: {val.strip()}")
-                continue
-            except ValueError:
-                pass
-        if line.startswith("- "):
-            lines.append(line[2:])
-            continue
-        lines.append(line)
-    return "\n".join(lines).strip() + "\n"
+    return format_output_as_text(data, use_color=use_color)
+
+
+def should_use_color(format_type: str, output_target: Optional[str], force: bool, disable: bool) -> bool:
+    if format_type != "text":
+        return False
+    if disable:
+        return False
+    output_is_stdout = output_target in (None, "-")
+    if not output_is_stdout:
+        return False
+    if force:
+        return True
+    if os.environ.get("NO_COLOR"):
+        return False
+    if os.environ.get("TERM", "").lower() == "dumb":
+        return False
+    return sys.stdout.isatty()
 
 
 def main() -> None:
     """Main entry point for the CLI."""
-    parser = argparse.ArgumentParser(description="Gather detailed information about your Mac.")
-    parser.add_argument(
+    description = "Gather detailed information about your Mac."
+    examples = "\n".join(
+        [
+            "Examples:",
+            "  about-this-mac",
+            "  about-this-mac --section hardware",
+            "  about-this-mac --format json",
+            "  about-this-mac --plain --output report.txt",
+            "  about-this-mac --hardware-info",
+        ]
+    )
+    parser = argparse.ArgumentParser(
+        description=description,
+        epilog=examples,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+
+    format_group = parser.add_mutually_exclusive_group()
+    format_group.add_argument(
         "--format",
         choices=["text", "json", "yaml", "markdown", "public", "simple"],
         default="text",
         help='Output format (use "public" for sales-friendly output)',
     )
+    format_group.add_argument(
+        "--json",
+        action="store_const",
+        const="json",
+        dest="format",
+        help='Shorthand for "--format json"',
+    )
+    format_group.add_argument(
+        "--plain",
+        action="store_const",
+        const="text",
+        dest="format",
+        help='Shorthand for "--format text"',
+    )
+
     parser.add_argument(
         "--section",
         choices=["hardware", "battery", "all"],
         default="all",
         help="Information section to display",
     )
-    parser.add_argument("--output", help="Save output to file")
     parser.add_argument(
+        "-o",
+        "--output",
+        help="Save output to file (use '-' for stdout)",
+    )
+
+    verbosity = parser.add_mutually_exclusive_group()
+    verbosity.add_argument(
+        "-v",
         "--verbose",
         action="store_true",
         help="Show detailed debug information",
     )
+    verbosity.add_argument(
+        "-q",
+        "--quiet",
+        action="store_true",
+        help="Suppress non-essential output",
+    )
+
+    color_group = parser.add_mutually_exclusive_group()
+    color_group.add_argument(
+        "--color",
+        action="store_true",
+        help="Force colored output",
+    )
+    color_group.add_argument(
+        "--no-color",
+        action="store_true",
+        help="Disable colored output",
+    )
+
     parser.add_argument(
         "--version",
         action="version",
@@ -145,6 +193,15 @@ def main() -> None:
     )
 
     args = parser.parse_args()
+
+    log_level = logging.WARNING
+    if args.verbose:
+        log_level = logging.DEBUG
+    elif args.quiet:
+        log_level = logging.ERROR
+    logging.basicConfig(
+        level=log_level, format="%(asctime)s - %(levelname)s - %(message)s", force=True
+    )
 
     try:
         gatherer = MacInfoGatherer(verbose=args.verbose)
@@ -273,19 +330,25 @@ def main() -> None:
             if battery_info:
                 data["battery"] = asdict(battery_info)
 
+        use_color = should_use_color(args.format, args.output, args.color, args.no_color)
+
         # Format the output
-        output = format_output(data, args.format, gatherer)
+        output = format_output(data, args.format, gatherer, use_color=use_color)
 
         # Handle output: only write to a file if --output is explicitly provided
-        if args.output:
+        if args.output and args.output != "-":
             with open(args.output, "w", encoding="utf-8") as f:
                 f.write(output)
-            print(f"Output saved to {args.output}")
+            if not args.quiet:
+                print(f"Output saved to {args.output}", file=sys.stderr)
         else:
             print(output)
 
     except Exception as e:
-        logger.error("An error occurred: %s", e)
+        if args.verbose:
+            logger.exception("Unexpected error")
+        else:
+            logger.error("Error: %s", e)
         sys.exit(1)
 
 

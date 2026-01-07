@@ -1,10 +1,11 @@
 """Battery information gathering module."""
 
 import re
-import subprocess
 import logging
 from dataclasses import dataclass
 from typing import Optional, List
+
+from about_this_mac.utils.command import run_command_result
 
 logger = logging.getLogger(__name__)
 
@@ -30,13 +31,13 @@ class BatteryInfoGatherer:
 
     def _run_command(self, command: List[str]) -> str:
         """Run a shell command and return its output."""
-        try:
-            result = subprocess.run(command, capture_output=True, text=True, check=True)
-            return result.stdout.strip()
-        except subprocess.CalledProcessError as e:
-            logger.debug(f"Command failed: {' '.join(command)}")
-            logger.debug(f"Error: {e.stderr}")
-            return ""
+        result = run_command_result(command, check=False)
+        if result.ok:
+            return result.stdout
+        logger.debug("Command failed (exit %s): %s", result.returncode, " ".join(result.command))
+        if result.stderr:
+            logger.debug("Command stderr: %s", result.stderr)
+        return ""
 
     def _get_value(
         self, key: str, ioreg_output: str, default: Optional[int] = None

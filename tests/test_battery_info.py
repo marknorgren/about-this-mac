@@ -5,6 +5,7 @@ from unittest.mock import patch, MagicMock
 import pytest
 
 from about_this_mac.battery.battery_info import BatteryInfo, BatteryInfoGatherer
+from about_this_mac.utils.command import CommandResult
 
 # Sample ioreg output for testing
 SAMPLE_IOREG_OUTPUT = """
@@ -49,20 +50,17 @@ def test_battery_info_creation() -> None:
     assert battery_info.low_power_mode is False
 
 
-@patch("about_this_mac.battery.battery_info.subprocess.run")
+def _result(command: list, stdout: str = "", stderr: str = "", returncode: int = 0) -> CommandResult:
+    return CommandResult(command=command, stdout=stdout, stderr=stderr, returncode=returncode)
+
+
+@patch("about_this_mac.battery.battery_info.run_command_result")
 def test_battery_info_gathering(mock_run: MagicMock) -> None:
     """Test gathering battery information from system."""
-    # Mock the ioreg command
-    mock_ioreg = MagicMock()
-    mock_ioreg.stdout = SAMPLE_IOREG_OUTPUT
-    mock_ioreg.returncode = 0
-
-    # Mock the pmset command for low power mode
-    mock_pmset = MagicMock()
-    mock_pmset.stdout = "lowpowermode 0"
-    mock_pmset.returncode = 0
-
-    mock_run.side_effect = [mock_ioreg, mock_pmset]
+    mock_run.side_effect = [
+        _result(["ioreg", "-r", "-n", "AppleSmartBattery"], stdout=SAMPLE_IOREG_OUTPUT),
+        _result(["pmset", "-g"], stdout="lowpowermode 0"),
+    ]
 
     gatherer = BatteryInfoGatherer()
     battery_info = gatherer.get_battery_info()
@@ -87,10 +85,12 @@ def test_battery_info_gathering(mock_run: MagicMock) -> None:
     assert battery_info.low_power_mode is False
 
 
-@patch("about_this_mac.battery.battery_info.subprocess.run")
+@patch("about_this_mac.battery.battery_info.run_command_result")
 def test_battery_info_gathering_no_battery(mock_run: MagicMock) -> None:
     """Test gathering battery information when no battery is present."""
-    mock_run.side_effect = Exception("No battery found")
+    mock_run.return_value = _result(
+        ["ioreg", "-r", "-n", "AppleSmartBattery"], stderr="No battery found", returncode=1
+    )
 
     gatherer = BatteryInfoGatherer()
     battery_info = gatherer.get_battery_info()
@@ -98,20 +98,13 @@ def test_battery_info_gathering_no_battery(mock_run: MagicMock) -> None:
     assert battery_info is None
 
 
-@patch("about_this_mac.battery.battery_info.subprocess.run")
+@patch("about_this_mac.battery.battery_info.run_command_result")
 def test_battery_info_gathering_with_low_power_mode(mock_run: MagicMock) -> None:
     """Test gathering battery information with low power mode enabled."""
-    # Mock the ioreg command
-    mock_ioreg = MagicMock()
-    mock_ioreg.stdout = SAMPLE_IOREG_OUTPUT
-    mock_ioreg.returncode = 0
-
-    # Mock the pmset command showing low power mode enabled
-    mock_pmset = MagicMock()
-    mock_pmset.stdout = "lowpowermode 1"
-    mock_pmset.returncode = 0
-
-    mock_run.side_effect = [mock_ioreg, mock_pmset]
+    mock_run.side_effect = [
+        _result(["ioreg", "-r", "-n", "AppleSmartBattery"], stdout=SAMPLE_IOREG_OUTPUT),
+        _result(["pmset", "-g"], stdout="lowpowermode 1"),
+    ]
 
     gatherer = BatteryInfoGatherer()
     battery_info = gatherer.get_battery_info()

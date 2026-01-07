@@ -1,6 +1,6 @@
 """Utility functions for about-this-mac."""
 
-from .command import run_command, get_sysctl_value
+from .command import CommandResult, run_command, run_command_result, get_sysctl_value
 from .system import (
     check_macos,
     check_permissions,
@@ -14,10 +14,13 @@ from .formatting import (
     format_output_as_json,
     format_output_as_yaml,
     format_output_as_markdown,
+    format_output_as_text,
 )
 
 __all__ = [
     "run_command",
+    "run_command_result",
+    "CommandResult",
     "get_sysctl_value",
     "check_macos",
     "check_permissions",
@@ -29,4 +32,5 @@ __all__ = [
     "format_output_as_json",
     "format_output_as_yaml",
     "format_output_as_markdown",
+    "format_output_as_text",
 ]
