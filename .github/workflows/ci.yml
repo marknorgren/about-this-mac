@@ -7,7 +7,48 @@ on:
     branches: [main]
 
 jobs:
+  validate-repo:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 🔍 Check for invalid git submodules
+        run: |
+          # Check for gitlinks (mode 160000) which indicate submodules
+          if git ls-files --stage | grep -q '^160000'; then
+            echo "❌ Found gitlink entries (potential invalid submodules):"
+            git ls-files --stage | grep '^160000'
+
+            # Check if .gitmodules exists
+            if [ ! -f .gitmodules ]; then
+              echo "❌ ERROR: Gitlink entries found but no .gitmodules file exists!"
+              echo "This usually means a git repository was accidentally committed."
+              exit 1
+            fi
+
+            # If .gitmodules exists, verify all submodules are properly configured
+            git ls-files --stage | grep '^160000' | while read mode hash stage path; do
+              if ! git config --file .gitmodules --get "submodule.$path.url" > /dev/null 2>&1; then
+                echo "❌ ERROR: Submodule '$path' has no URL configured in .gitmodules"
+                exit 1
+              fi
+            done
+          fi
+          echo "✅ No invalid submodule entries found"
+
+      - name: 🚫 Check that worktrees/ is not committed
+        run: |
+          if git ls-files | grep -q '^worktrees/'; then
+            echo "❌ ERROR: worktrees/ directory is committed to git!"
+            echo "Git worktrees should never be committed."
+            echo "Found files:"
+            git ls-files | grep '^worktrees/'
+            exit 1
+          fi
+          echo "✅ No worktrees/ files committed"
+
   test:
+    needs: validate-repo
     runs-on: macos-latest
     strategy:
       matrix:
