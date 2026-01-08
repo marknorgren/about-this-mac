@@ -276,7 +276,7 @@ def format_output_as_markdown(data: Dict[str, Any]) -> str:
         health_display = f"{health}%" if health != UNKNOWN_VALUE else UNKNOWN_VALUE
         temp_c = _format_float(bat.get("temperature_celsius"))
         temp_f = _format_float(bat.get("temperature_fahrenheit"))
-        if temp_c == UNKNOWN_VALUE or temp_f == UNKNOWN_VALUE:
+        if UNKNOWN_VALUE in (temp_c, temp_f):
             temp_display = UNKNOWN_VALUE
         else:
             temp_display = f"{temp_c}°C / {temp_f}°F"
@@ -438,7 +438,7 @@ def format_output_as_text(data: Dict[str, Any], use_color: bool = False) -> str:
         health_display = f"{health}%" if health != UNKNOWN_VALUE else UNKNOWN_VALUE
         temp_c = _format_float(bat.get("temperature_celsius"))
         temp_f = _format_float(bat.get("temperature_fahrenheit"))
-        if temp_c == UNKNOWN_VALUE or temp_f == UNKNOWN_VALUE:
+        if UNKNOWN_VALUE in (temp_c, temp_f):
             temp_display = UNKNOWN_VALUE
         else:
             temp_display = f"{temp_c}°C / {temp_f}°F"

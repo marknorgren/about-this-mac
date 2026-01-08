@@ -4,7 +4,7 @@ from dataclasses import dataclass
 import logging
 import shlex
 import subprocess
-from typing import Any, List, Mapping, Optional, Sequence
+from typing import List, Mapping, Optional, Sequence
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +47,7 @@ def _normalize_output(value: object) -> str:
     return str(value)
 
 
-def run_command_result(
+def run_command_result(  # pylint: disable=too-many-positional-arguments
     command: Sequence[str],
     check: bool = True,
     timeout: Optional[float] = None,
@@ -121,7 +121,7 @@ def run_command_result(
         return CommandResult(command=command_list, stdout="", stderr=str(exc), returncode=127)
 
 
-def run_command(
+def run_command(  # pylint: disable=too-many-positional-arguments
     command: Sequence[str],
     check: bool = True,
     timeout: Optional[float] = None,

@@ -513,12 +513,11 @@ class MacInfoGatherer(BatteryInfoGatherer):
                 3456: "16-inch",  # M1/M2/M3 Pro/Max 16"
                 3024: "14-inch",  # M1/M2/M3 Pro/Max 14"
                 2560: "13-inch",  # M1/M2 13"
-                2880: "15-inch",  # M2 15"
+                2880: "15-inch",  # M2 15" / Retina 15"
                 2304: "12-inch",  # 12" MacBook
                 1440: "13-inch",  # Older 13" models
                 1680: "13-inch",  # Older 13" models
                 1920: "15-inch",  # Older 15" models
-                2880: "15-inch",  # Retina 15" models
             }
             return resolutions.get(width, "")
         except (ValueError, IndexError):
@@ -526,6 +525,7 @@ class MacInfoGatherer(BatteryInfoGatherer):
         return ""
 
     def _get_release_date(self) -> Tuple[str, str, str]:
+        # pylint: disable=too-many-nested-blocks,too-many-return-statements
         """Get the release date of the machine.
         Returns:
             Tuple of (formatted_date, raw_value, key_used)
@@ -634,6 +634,7 @@ class MacInfoGatherer(BatteryInfoGatherer):
         return "", "", ""
 
     def _get_model_info(self) -> Tuple[str, str, str]:
+        # pylint: disable=too-many-nested-blocks
         """Get model name, size and year from system information."""
         model_size = ""
         model_year = ""
@@ -693,7 +694,7 @@ class MacInfoGatherer(BatteryInfoGatherer):
                     pass
 
         # Try to get the release date first
-        release_date, raw_value, key_used = self._get_release_date()
+        release_date, _raw_value, _key_used = self._get_release_date()
         if release_date:
             # Extract year from release date (e.g., "Mar 2024" -> "2024")
             year_match = re.search(r"20\d{2}", release_date)
@@ -750,7 +751,7 @@ class MacInfoGatherer(BatteryInfoGatherer):
         _, model_size, _ = self._get_model_info()  # Don't use the year from here
 
         # Get the release date
-        release_date, raw_value, key_used = self._get_release_date()
+        release_date, _raw_value, _key_used = self._get_release_date()
 
         # Construct the full model name
         model_name = "MacBook Pro"

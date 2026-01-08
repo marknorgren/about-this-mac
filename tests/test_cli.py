@@ -1,20 +1,16 @@
 """Minimal tests for CLI behavior regarding output formatting and file writing."""
 
+from dataclasses import dataclass
 import io
 import os
-from contextlib import redirect_stdout, redirect_stderr
+from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from typing import List, Tuple
 
-import builtins
-import types
-
 import pytest
 
-from dataclasses import dataclass
-
-
 # Import dataclasses from the package to construct fake hardware info
+from about_this_mac import cli
 from about_this_mac.hardware.hardware_info import HardwareInfo, MemoryInfo, StorageInfo
 
 
@@ -70,8 +66,6 @@ class FakeGatherer:
 
 def run_cli(monkeypatch: pytest.MonkeyPatch, args: List[str], tmpdir: Path) -> Tuple[str, str]:
     """Helper to run CLI with patched gatherer and capture stdout/stderr."""
-    import about_this_mac.cli as cli
-
     # Patch the gatherer used inside cli
     monkeypatch.setattr(cli, "MacInfoGatherer", FakeGatherer)
 

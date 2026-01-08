@@ -28,43 +28,36 @@ def format_output(
     use_color: bool = False,
 ) -> str:
     """Format the output according to the specified format."""
+    output = ""
     if format_type == "simple":
-        if not gatherer:
-            gatherer = MacInfoGatherer()
-        return gatherer.format_simple_output(data)
-    if format_type == "public":
-        if not gatherer:
-            gatherer = MacInfoGatherer()
-        return gatherer.format_public_output(data)
-    if format_type == "json":
-        return format_output_as_json(data)
-    if format_type == "yaml":
-        return format_output_as_yaml(data)
-    if format_type == "markdown":
-        return format_output_as_markdown(data)
-    if format_type == "text":
-        return format_output_as_text(data, use_color=use_color)
-    # default: text
-    return format_output_as_text(data, use_color=use_color)
+        gatherer = gatherer or MacInfoGatherer()
+        output = gatherer.format_simple_output(data)
+    elif format_type == "public":
+        gatherer = gatherer or MacInfoGatherer()
+        output = gatherer.format_public_output(data)
+    elif format_type == "json":
+        output = format_output_as_json(data)
+    elif format_type == "yaml":
+        output = format_output_as_yaml(data)
+    elif format_type == "markdown":
+        output = format_output_as_markdown(data)
+    else:
+        output = format_output_as_text(data, use_color=use_color)
+    return output
 
 
 def should_use_color(
     format_type: str, output_target: Optional[str], force: bool, disable: bool
 ) -> bool:
-    if format_type != "text":
-        return False
-    if disable:
-        return False
-    output_is_stdout = output_target in (None, "-")
-    if not output_is_stdout:
-        return False
-    if force:
-        return True
-    if os.environ.get("NO_COLOR"):
-        return False
-    if os.environ.get("TERM", "").lower() == "dumb":
-        return False
-    return sys.stdout.isatty()
+    use_color = False
+    if format_type == "text" and not disable:
+        output_is_stdout = output_target in (None, "-")
+        if output_is_stdout:
+            if force:
+                use_color = True
+            elif not os.environ.get("NO_COLOR") and os.environ.get("TERM", "").lower() != "dumb":
+                use_color = sys.stdout.isatty()
+    return use_color
 
 
 def main() -> None:
