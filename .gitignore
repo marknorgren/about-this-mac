@@ -45,7 +45,10 @@ coverage.xml
 # Logs
 *.log
 
+# Local git worktrees
+worktrees/
+
 # macOS
 .DS_Store
 .AppleDouble
-.LSOverride 
+.LSOverride
