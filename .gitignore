@@ -48,4 +48,7 @@ coverage.xml
 # macOS
 .DS_Store
 .AppleDouble
-.LSOverride 
+.LSOverride
+
+# Git worktrees
+worktrees/ 
