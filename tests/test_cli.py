@@ -24,7 +24,9 @@ class FakeGatherer:
     verbose: bool = False
 
     def get_hardware_info(self) -> HardwareInfo:
-        memory = MemoryInfo(total="16 GB", type="LPDDR5", speed="6400 MHz", manufacturer="Apple", ecc=False)
+        memory = MemoryInfo(
+            total="16 GB", type="LPDDR5", speed="6400 MHz", manufacturer="Apple", ecc=False
+        )
         storage = StorageInfo(
             name="Apple SSD",
             model="Apple SSD",
@@ -86,7 +88,9 @@ def run_cli(monkeypatch: pytest.MonkeyPatch, args: List[str], tmpdir) -> tuple[s
     return stdout_buf.getvalue(), stderr_buf.getvalue()
 
 
-def test_markdown_without_output_prints_to_stdout(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
+def test_markdown_without_output_prints_to_stdout(
+    monkeypatch: pytest.MonkeyPatch, tmp_path
+) -> None:
     output, errors = run_cli(monkeypatch, ["--format", "markdown"], tmp_path)
     assert output.startswith("# Mac System Information")
     assert errors == ""

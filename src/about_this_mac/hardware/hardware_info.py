@@ -139,7 +139,9 @@ class MacInfoGatherer(BatteryInfoGatherer):
             processor_name = hw_data.get("processor_name", "")
             if not processor_name:
                 # Try to get from graphics info as fallback
-                graphics_info = self._run_command(["system_profiler", "SPDisplaysDataType"], privileged=True)
+                graphics_info = self._run_command(
+                    ["system_profiler", "SPDisplaysDataType"], privileged=True
+                )
                 if graphics_info:
                     for line in graphics_info.split("\n"):
                         if any(f"Apple M{i}" in line for i in range(1, 5)):
@@ -164,7 +166,9 @@ class MacInfoGatherer(BatteryInfoGatherer):
             pass
 
         # Get GPU cores from graphics info
-        graphics_info = self._run_command(["system_profiler", "SPDisplaysDataType"], privileged=True)
+        graphics_info = self._run_command(
+            ["system_profiler", "SPDisplaysDataType"], privileged=True
+        )
 
         gpu_cores = 0
         if graphics_info:
@@ -214,7 +218,9 @@ class MacInfoGatherer(BatteryInfoGatherer):
         """Get detailed graphics information."""
         graphics_cards = []
 
-        graphics_info = self._run_command(["system_profiler", "SPDisplaysDataType", "-json"], privileged=True)
+        graphics_info = self._run_command(
+            ["system_profiler", "SPDisplaysDataType", "-json"], privileged=True
+        )
 
         if graphics_info:
             try:
@@ -253,7 +259,9 @@ class MacInfoGatherer(BatteryInfoGatherer):
         manufacturer = "Unknown"
         ecc = False
 
-        memory_info = self._run_command(["system_profiler", "SPMemoryDataType", "-json"], privileged=True)
+        memory_info = self._run_command(
+            ["system_profiler", "SPMemoryDataType", "-json"], privileged=True
+        )
 
         if memory_info:
             try:
@@ -277,7 +285,9 @@ class MacInfoGatherer(BatteryInfoGatherer):
     def _get_storage_info(self) -> StorageInfo:
         """Get detailed storage information."""
         # Try NVMe first
-        nvme_info = self._run_command(["system_profiler", "SPNVMeDataType", "-json"], privileged=True)
+        nvme_info = self._run_command(
+            ["system_profiler", "SPNVMeDataType", "-json"], privileged=True
+        )
 
         if nvme_info:
             try:
@@ -300,7 +310,9 @@ class MacInfoGatherer(BatteryInfoGatherer):
                 pass
 
         # Try SATA if no NVMe
-        sata_info = self._run_command(["system_profiler", "SPSerialATADataType", "-json"], privileged=True)
+        sata_info = self._run_command(
+            ["system_profiler", "SPSerialATADataType", "-json"], privileged=True
+        )
 
         if sata_info:
             try:
@@ -323,7 +335,9 @@ class MacInfoGatherer(BatteryInfoGatherer):
                 pass
 
         # Fallback to basic storage info
-        storage_info = self._run_command(["system_profiler", "SPStorageDataType", "-json"], privileged=True)
+        storage_info = self._run_command(
+            ["system_profiler", "SPStorageDataType", "-json"], privileged=True
+        )
 
         if storage_info:
             try:
@@ -362,7 +376,9 @@ class MacInfoGatherer(BatteryInfoGatherer):
     def _get_bluetooth_info(self) -> Tuple[str, str, str]:
         """Get detailed Bluetooth information."""
         try:
-            bluetooth_info = self._run_command(["system_profiler", "SPBluetoothDataType", "-json"], privileged=True)
+            bluetooth_info = self._run_command(
+                ["system_profiler", "SPBluetoothDataType", "-json"], privileged=True
+            )
             if bluetooth_info:
                 data = json.loads(bluetooth_info)
                 controller = data.get("SPBluetoothDataType", [{}])[0].get(
@@ -380,7 +396,9 @@ class MacInfoGatherer(BatteryInfoGatherer):
     def get_hardware_info(self) -> HardwareInfo:
         """Gather hardware information using system_profiler and sysctl."""
         # Get basic hardware info
-        hw_info = self._run_command(["system_profiler", "SPHardwareDataType", "-json"], privileged=True)
+        hw_info = self._run_command(
+            ["system_profiler", "SPHardwareDataType", "-json"], privileged=True
+        )
 
         if hw_info:
             hw_data = json.loads(hw_info).get("SPHardwareDataType", [{}])[0]
@@ -410,7 +428,9 @@ class MacInfoGatherer(BatteryInfoGatherer):
             gpu_cores = 0
 
         # Get macOS version and build
-        sw_info = self._run_command(["system_profiler", "SPSoftwareDataType", "-json"], privileged=True)
+        sw_info = self._run_command(
+            ["system_profiler", "SPSoftwareDataType", "-json"], privileged=True
+        )
 
         macos_version = platform.mac_ver()[0]
         macos_build = ""
@@ -518,7 +538,7 @@ class MacInfoGatherer(BatteryInfoGatherer):
                 "product-name",
                 "target-type",
             ]
-            
+
             for key in ioreg_keys:
                 ioreg_cmd = ["/usr/sbin/ioreg", "-ar", "-k", key]
                 ioreg_output = self._run_command(ioreg_cmd, privileged=False)
@@ -531,12 +551,16 @@ class MacInfoGatherer(BatteryInfoGatherer):
                     ]
                     try:
                         release_info = subprocess.run(
-                            plist_cmd, input=ioreg_output, capture_output=True, text=True, check=True
+                            plist_cmd,
+                            input=ioreg_output,
+                            capture_output=True,
+                            text=True,
+                            check=True,
                         ).stdout.strip()
-                        
+
                         if release_info:
                             # Try different date formats
-                            
+
                             # Format 1: Direct date (2024-03)
                             if "-" in release_info:
                                 try:
@@ -544,12 +568,25 @@ class MacInfoGatherer(BatteryInfoGatherer):
                                     if len(date_parts) >= 2:
                                         year = date_parts[0]
                                         month = int(date_parts[1])
-                                        month_names = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun", 
-                                                     "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+                                        month_names = [
+                                            "",
+                                            "Jan",
+                                            "Feb",
+                                            "Mar",
+                                            "Apr",
+                                            "May",
+                                            "Jun",
+                                            "Jul",
+                                            "Aug",
+                                            "Sep",
+                                            "Oct",
+                                            "Nov",
+                                            "Dec",
+                                        ]
                                         return f"{month_names[month]} {year}", release_info, key
                                 except (ValueError, IndexError):
                                     pass
-                            
+
                             # Format 2: Marketing name with date (MacBook Pro (14-inch, 2024))
                             date_match = re.search(r"\(.*?(\d{4})\)", release_info)
                             if date_match:
@@ -558,14 +595,19 @@ class MacInfoGatherer(BatteryInfoGatherer):
                                 if year == "2024":
                                     return f"Mar {year}", release_info, key
                                 return year, release_info, key
-                            
+
                             # Format 3: Target type with date (J416c)
                             if key == "target-type" and release_info.startswith("J"):
                                 # Try to get the date from system profiler as fallback
-                                hw_info = self._run_command(["system_profiler", "SPHardwareDataType", "-json"], privileged=True)
+                                hw_info = self._run_command(
+                                    ["system_profiler", "SPHardwareDataType", "-json"],
+                                    privileged=True,
+                                )
                                 if hw_info:
                                     try:
-                                        hw_data = json.loads(hw_info).get("SPHardwareDataType", [{}])[0]
+                                        hw_data = json.loads(hw_info).get(
+                                            "SPHardwareDataType", [{}]
+                                        )[0]
                                         model_id = hw_data.get("machine_model", "")
                                         if "Mac16,6" in model_id:  # Latest model
                                             return "Mar 2024", release_info, key
@@ -575,7 +617,9 @@ class MacInfoGatherer(BatteryInfoGatherer):
                         continue
 
             # If no date found, try to determine from processor info
-            graphics_info = self._run_command(["system_profiler", "SPDisplaysDataType"], privileged=True)
+            graphics_info = self._run_command(
+                ["system_profiler", "SPDisplaysDataType"], privileged=True
+            )
             if "M4" in graphics_info:
                 return "Mar 2024", "Detected from M4 chip", "graphics-info"
             elif "M3" in graphics_info:
@@ -625,7 +669,9 @@ class MacInfoGatherer(BatteryInfoGatherer):
 
         # If we don't have the size yet, try to get it from display info
         if not model_size:
-            displays_info = self._run_command(["system_profiler", "SPDisplaysDataType", "-json"], privileged=True)
+            displays_info = self._run_command(
+                ["system_profiler", "SPDisplaysDataType", "-json"], privileged=True
+            )
             if displays_info:
                 try:
                     displays_data = json.loads(displays_info).get("SPDisplaysDataType", [])
@@ -634,7 +680,8 @@ class MacInfoGatherer(BatteryInfoGatherer):
                             resolution = screen.get("_spdisplays_pixels", "")
                             if (
                                 resolution
-                                and "internal" in screen.get("spdisplays_connection_type", "").lower()
+                                and "internal"
+                                in screen.get("spdisplays_connection_type", "").lower()
                             ):
                                 detected_size = self._get_screen_size(resolution)
                                 if detected_size:
@@ -656,7 +703,9 @@ class MacInfoGatherer(BatteryInfoGatherer):
         # If we still don't have the year, try other methods
         if not model_year:
             # Try system profiler
-            sw_info = self._run_command(["system_profiler", "SPSoftwareDataType", "-json"], privileged=True)
+            sw_info = self._run_command(
+                ["system_profiler", "SPSoftwareDataType", "-json"], privileged=True
+            )
             if sw_info:
                 try:
                     sw_data = json.loads(sw_info).get("SPSoftwareDataType", [{}])[0]
@@ -670,7 +719,9 @@ class MacInfoGatherer(BatteryInfoGatherer):
 
             # If still no year, try to determine from processor
             if not model_year:
-                processor = self._run_command(["sysctl", "-n", "machdep.cpu.brand_string"], privileged=False)
+                processor = self._run_command(
+                    ["sysctl", "-n", "machdep.cpu.brand_string"], privileged=False
+                )
                 if "M4" in processor or "M4" in str(self._get_graphics_info()):
                     model_year = "2024"
                 elif "M3" in processor:
@@ -700,7 +751,7 @@ class MacInfoGatherer(BatteryInfoGatherer):
 
         # Get the release date
         release_date, raw_value, key_used = self._get_release_date()
-        
+
         # Construct the full model name
         model_name = "MacBook Pro"
 

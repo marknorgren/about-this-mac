@@ -50,7 +50,9 @@ def test_battery_info_creation() -> None:
     assert battery_info.low_power_mode is False
 
 
-def _result(command: list, stdout: str = "", stderr: str = "", returncode: int = 0) -> CommandResult:
+def _result(
+    command: list, stdout: str = "", stderr: str = "", returncode: int = 0
+) -> CommandResult:
     return CommandResult(command=command, stdout=stdout, stderr=stderr, returncode=returncode)
 
 

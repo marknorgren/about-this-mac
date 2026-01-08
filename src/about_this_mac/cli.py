@@ -48,7 +48,9 @@ def format_output(
     return format_output_as_text(data, use_color=use_color)
 
 
-def should_use_color(format_type: str, output_target: Optional[str], force: bool, disable: bool) -> bool:
+def should_use_color(
+    format_type: str, output_target: Optional[str], force: bool, disable: bool
+) -> bool:
     if format_type != "text":
         return False
     if disable:
@@ -233,7 +235,9 @@ def main() -> None:
                     [
                         "\nHardware Information (system_profiler SPHardwareDataType):",
                         "=" * 60,
-                        gatherer.run_command(["system_profiler", "SPHardwareDataType"], privileged=True),
+                        gatherer.run_command(
+                            ["system_profiler", "SPHardwareDataType"], privileged=True
+                        ),
                         "\nCPU Information (sysctl):",
                         "=" * 60,
                         f"hw.model: {gatherer.get_sysctl_value('hw.model')}",
@@ -248,7 +252,9 @@ def main() -> None:
                     [
                         "\nPower Information (system_profiler SPPowerDataType):",
                         "=" * 60,
-                        gatherer.run_command(["system_profiler", "SPPowerDataType"], privileged=True),
+                        gatherer.run_command(
+                            ["system_profiler", "SPPowerDataType"], privileged=True
+                        ),
                         "\nBattery Status (pmset):",
                         "=" * 60,
                         gatherer.run_command(["pmset", "-g", "batt"], privileged=False),
@@ -260,7 +266,9 @@ def main() -> None:
                     [
                         "\nGraphics Information (system_profiler SPDisplaysDataType):",
                         "=" * 60,
-                        gatherer.run_command(["system_profiler", "SPDisplaysDataType"], privileged=True),
+                        gatherer.run_command(
+                            ["system_profiler", "SPDisplaysDataType"], privileged=True
+                        ),
                     ]
                 )
 
@@ -269,13 +277,19 @@ def main() -> None:
                     [
                         "\nNVMe Storage Information (system_profiler SPNVMeDataType):",
                         "=" * 60,
-                        gatherer.run_command(["system_profiler", "SPNVMeDataType"], privileged=True),
+                        gatherer.run_command(
+                            ["system_profiler", "SPNVMeDataType"], privileged=True
+                        ),
                         "\nSATA Storage Information (system_profiler SPSerialATADataType):",
                         "=" * 60,
-                        gatherer.run_command(["system_profiler", "SPSerialATADataType"], privileged=True),
+                        gatherer.run_command(
+                            ["system_profiler", "SPSerialATADataType"], privileged=True
+                        ),
                         "\nGeneral Storage Information (system_profiler SPStorageDataType):",
                         "=" * 60,
-                        gatherer.run_command(["system_profiler", "SPStorageDataType"], privileged=True),
+                        gatherer.run_command(
+                            ["system_profiler", "SPStorageDataType"], privileged=True
+                        ),
                     ]
                 )
 
@@ -284,7 +298,9 @@ def main() -> None:
                     [
                         "\nMemory Information (system_profiler SPMemoryDataType):",
                         "=" * 60,
-                        gatherer.run_command(["system_profiler", "SPMemoryDataType"], privileged=True),
+                        gatherer.run_command(
+                            ["system_profiler", "SPMemoryDataType"], privileged=True
+                        ),
                         "\nMemory Size (sysctl):",
                         "=" * 60,
                         f"hw.memsize: {gatherer.get_sysctl_value('hw.memsize')}",
@@ -296,7 +312,9 @@ def main() -> None:
                     [
                         "\nAudio Information (system_profiler SPAudioDataType):",
                         "=" * 60,
-                        gatherer.run_command(["system_profiler", "SPAudioDataType"], privileged=True),
+                        gatherer.run_command(
+                            ["system_profiler", "SPAudioDataType"], privileged=True
+                        ),
                     ]
                 )
 
@@ -314,7 +332,9 @@ def main() -> None:
                         gatherer.run_command(["netstat", "-i"], privileged=False),
                         "\nBluetooth Information (system_profiler SPBluetoothDataType):",
                         "=" * 60,
-                        gatherer.run_command(["system_profiler", "SPBluetoothDataType"], privileged=True),
+                        gatherer.run_command(
+                            ["system_profiler", "SPBluetoothDataType"], privileged=True
+                        ),
                     ]
                 )
 
