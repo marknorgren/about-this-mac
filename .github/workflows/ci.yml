@@ -22,14 +22,19 @@ jobs:
           python-version: ${{ matrix.python-version }}
           cache: "pip"
 
+      - name: ⚡ Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+
       - name: 🛠️ Install just
         run: |
           brew install just
 
       - name: 📦 Install dependencies
         run: |
-          python -m pip install --upgrade pip
-          pip install -e ".[dev]"
+          uv sync --extra dev
 
       - name: 🎨 Check formatting
         run: |
@@ -60,14 +65,19 @@ jobs:
           python-version: "3.11"
           cache: "pip"
 
+      - name: ⚡ Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+
       - name: 🛠️ Install just
         run: |
           brew install just
 
       - name: 📦 Install package
         run: |
-          python -m pip install --upgrade pip
-          pip install -e .
+          uv sync
 
       - name: 📁 Create output directory
         run: mkdir -p reports
