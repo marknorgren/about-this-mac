@@ -47,8 +47,9 @@ def _normalize_output(value: object) -> str:
     return str(value)
 
 
-def run_command_result(  # pylint: disable=too-many-positional-arguments
+def run_command_result(
     command: Sequence[str],
+    *,
     check: bool = True,
     timeout: Optional[float] = None,
     env: Optional[Mapping[str, str]] = None,
@@ -121,8 +122,9 @@ def run_command_result(  # pylint: disable=too-many-positional-arguments
         return CommandResult(command=command_list, stdout="", stderr=str(exc), returncode=127)
 
 
-def run_command(  # pylint: disable=too-many-positional-arguments
+def run_command(
     command: Sequence[str],
+    *,
     check: bool = True,
     timeout: Optional[float] = None,
     env: Optional[Mapping[str, str]] = None,
