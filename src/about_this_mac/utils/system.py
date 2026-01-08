@@ -23,13 +23,11 @@ def check_permissions(timeout: Optional[float] = None) -> bool:
     Returns:
         True if script has full permissions, False otherwise.
     """
+    kwargs: Dict[str, Any] = {"capture_output": True}
+    if timeout is not None:
+        kwargs["timeout"] = timeout
     try:
-        subprocess.run(
-            ["system_profiler", "SPHardwareDataType", "-json"],
-            capture_output=True,
-            check=True,
-            timeout=timeout,
-        )
+        subprocess.run(["system_profiler", "SPHardwareDataType", "-json"], check=True, **kwargs)
         return True
     except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError, OSError):
         logger.warning(

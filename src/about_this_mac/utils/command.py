@@ -4,7 +4,7 @@ from dataclasses import dataclass
 import logging
 import shlex
 import subprocess
-from typing import List, Mapping, Optional, Sequence
+from typing import Any, Dict, List, Mapping, Optional, Sequence
 
 logger = logging.getLogger(__name__)
 
@@ -69,16 +69,16 @@ def run_command_result(  # pylint: disable=too-many-positional-arguments
         CommandResult containing stdout, stderr, and return code.
     """
     command_list = [str(part) for part in command]
+    kwargs: Dict[str, Any] = {"capture_output": True, "text": True}
+    if timeout is not None:
+        kwargs["timeout"] = timeout
+    if env is not None:
+        kwargs["env"] = env
+    if cwd is not None:
+        kwargs["cwd"] = cwd
+
     try:
-        completed = subprocess.run(
-            command_list,
-            capture_output=True,
-            text=True,
-            check=check,
-            timeout=timeout,
-            env=env,
-            cwd=cwd,
-        )
+        completed = subprocess.run(command_list, check=check, **kwargs)
         stdout = completed.stdout or ""
         stderr = completed.stderr or ""
         if strip:
@@ -166,14 +166,11 @@ def get_sysctl_value(key: str, default: str = "Unknown", timeout: Optional[float
     Returns:
         The value as a string, or the default on error.
     """
+    kwargs: Dict[str, Any] = {"capture_output": True, "text": True}
+    if timeout is not None:
+        kwargs["timeout"] = timeout
     try:
-        result = subprocess.run(
-            ["sysctl", "-n", key],
-            capture_output=True,
-            text=True,
-            check=True,
-            timeout=timeout,
-        )
+        result = subprocess.run(["sysctl", "-n", key], check=True, **kwargs)
         value = (result.stdout or "").strip()
         return value if value else default
     except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError, OSError):
