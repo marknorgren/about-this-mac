@@ -156,10 +156,10 @@ class MacInfoGatherer(BatteryInfoGatherer):
             core_info = hw_data.get("number_processors", "")
             if isinstance(core_info, str) and ":" in core_info:
                 # Handle format like "proc 12:8:4" (total:performance:efficiency)
-                cores = core_info.split(":")
-                total_cores = int(cores[0].split()[-1])  # Get total cores
-                performance_cores = int(cores[1])
-                efficiency_cores = int(cores[2])
+                core_parts = core_info.split(":")
+                total_cores = int(core_parts[0].split()[-1])  # Get total cores
+                performance_cores = int(core_parts[1])
+                efficiency_cores = int(core_parts[2])
             else:
                 total_cores = int(core_info)
         except (ValueError, IndexError):
@@ -207,9 +207,9 @@ class MacInfoGatherer(BatteryInfoGatherer):
                     "M4 Pro": 28,
                     "M4 Max": 40,
                 }
-                for chip, cores in chip_gpu_cores.items():
+                for chip, core_count in chip_gpu_cores.items():
                     if chip in processor_name:
-                        gpu_cores = cores
+                        gpu_cores = core_count
                         break
 
         return processor_name, total_cores, performance_cores, efficiency_cores, gpu_cores
@@ -468,7 +468,7 @@ class MacInfoGatherer(BatteryInfoGatherer):
         )
 
     # Public wrapper for release date helper
-    def get_release_date(self):
+    def get_release_date(self) -> Tuple[str, str, str]:
         return self._get_release_date()
 
     def _get_uptime(self) -> str:

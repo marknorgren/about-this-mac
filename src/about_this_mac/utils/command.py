@@ -4,7 +4,7 @@ from dataclasses import dataclass
 import logging
 import shlex
 import subprocess
-from typing import List, Mapping, Optional, Sequence
+from typing import Any, List, Mapping, Optional, Sequence
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +37,16 @@ def _normalize_returncode(returncode: Optional[int]) -> int:
     return 0
 
 
+def _normalize_output(value: object) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, bytes):
+        return value.decode(errors="replace")
+    if isinstance(value, str):
+        return value
+    return str(value)
+
+
 def run_command_result(
     command: Sequence[str],
     check: bool = True,
@@ -59,16 +69,16 @@ def run_command_result(
         CommandResult containing stdout, stderr, and return code.
     """
     command_list = [str(part) for part in command]
-    kwargs = {"capture_output": True, "text": True, "check": check}
-    if timeout is not None:
-        kwargs["timeout"] = timeout
-    if env is not None:
-        kwargs["env"] = env
-    if cwd is not None:
-        kwargs["cwd"] = cwd
-
     try:
-        completed = subprocess.run(command_list, **kwargs)
+        completed = subprocess.run(
+            command_list,
+            capture_output=True,
+            text=True,
+            check=check,
+            timeout=timeout,
+            env=env,
+            cwd=cwd,
+        )
         stdout = completed.stdout or ""
         stderr = completed.stderr or ""
         if strip:
@@ -81,8 +91,8 @@ def run_command_result(
             returncode=_normalize_returncode(getattr(completed, "returncode", 0)),
         )
     except subprocess.CalledProcessError as exc:
-        stdout = exc.stdout or ""
-        stderr = exc.stderr or ""
+        stdout = _normalize_output(exc.stdout)
+        stderr = _normalize_output(exc.stderr)
         if strip:
             stdout = stdout.strip()
             stderr = stderr.strip()
@@ -96,8 +106,8 @@ def run_command_result(
             returncode=_normalize_returncode(getattr(exc, "returncode", 1)),
         )
     except subprocess.TimeoutExpired as exc:
-        stdout = exc.stdout or ""
-        stderr = exc.stderr or ""
+        stdout = _normalize_output(exc.stdout)
+        stderr = _normalize_output(exc.stderr)
         if strip:
             stdout = stdout.strip()
             stderr = stderr.strip()
@@ -156,11 +166,14 @@ def get_sysctl_value(key: str, default: str = "Unknown", timeout: Optional[float
     Returns:
         The value as a string, or the default on error.
     """
-    kwargs = {"capture_output": True, "text": True, "check": True}
-    if timeout is not None:
-        kwargs["timeout"] = timeout
     try:
-        result = subprocess.run(["sysctl", "-n", key], **kwargs)
+        result = subprocess.run(
+            ["sysctl", "-n", key],
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=timeout,
+        )
         value = (result.stdout or "").strip()
         return value if value else default
     except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError, OSError):

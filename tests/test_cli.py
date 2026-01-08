@@ -3,7 +3,8 @@
 import io
 import os
 from contextlib import redirect_stdout, redirect_stderr
-from typing import List
+from pathlib import Path
+from typing import List, Tuple
 
 import builtins
 import types
@@ -61,13 +62,13 @@ class FakeGatherer:
             uptime="2 days 3 hours",
         )
 
-    def get_battery_info(self):  # pragma: no cover - unused in these tests
+    def get_battery_info(self) -> None:  # pragma: no cover - unused in these tests
         return None
 
     # Methods used by CLI for raw modes are not needed in these tests
 
 
-def run_cli(monkeypatch: pytest.MonkeyPatch, args: List[str], tmpdir) -> tuple[str, str]:
+def run_cli(monkeypatch: pytest.MonkeyPatch, args: List[str], tmpdir: Path) -> Tuple[str, str]:
     """Helper to run CLI with patched gatherer and capture stdout/stderr."""
     import about_this_mac.cli as cli
 
@@ -89,7 +90,7 @@ def run_cli(monkeypatch: pytest.MonkeyPatch, args: List[str], tmpdir) -> tuple[s
 
 
 def test_markdown_without_output_prints_to_stdout(
-    monkeypatch: pytest.MonkeyPatch, tmp_path
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     output, errors = run_cli(monkeypatch, ["--format", "markdown"], tmp_path)
     assert output.startswith("# Mac System Information")
@@ -99,7 +100,7 @@ def test_markdown_without_output_prints_to_stdout(
     assert not any(name.endswith(".md") for name in files)
 
 
-def test_markdown_with_output_writes_file(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
+def test_markdown_with_output_writes_file(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     target = tmp_path / "report.md"
     output, errors = run_cli(
         monkeypatch, ["--format", "markdown", "--output", str(target)], tmp_path
