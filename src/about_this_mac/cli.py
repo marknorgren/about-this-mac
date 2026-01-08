@@ -3,261 +3,104 @@
 """Command-line interface for about-this-mac."""
 
 import argparse
-import json
 import logging
+import os
 import sys
 from dataclasses import asdict
-from datetime import datetime
 from typing import Dict, Optional, Any
-
-import yaml
 
 from about_this_mac import MacInfoGatherer
 from about_this_mac import __version__
+from about_this_mac.utils.formatting import (
+    format_output_as_json,
+    format_output_as_yaml,
+    format_output_as_markdown,
+    format_output_as_text,
+)
 
-# Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 
 def format_output(
-    data: Dict[str, Any], format_type: str, gatherer: Optional[MacInfoGatherer] = None
+    data: Dict[str, Any],
+    format_type: str,
+    gatherer: Optional[MacInfoGatherer] = None,
+    use_color: bool = False,
 ) -> str:
     """Format the output according to the specified format."""
+    output = ""
     if format_type == "simple":
-        if not gatherer:
-            gatherer = MacInfoGatherer()
-        return gatherer.format_simple_output(data)
+        gatherer = gatherer or MacInfoGatherer()
+        output = gatherer.format_simple_output(data)
     elif format_type == "public":
-        if not gatherer:
-            gatherer = MacInfoGatherer()
-        return gatherer.format_public_output(data)
+        gatherer = gatherer or MacInfoGatherer()
+        output = gatherer.format_public_output(data)
     elif format_type == "json":
-        return json.dumps(data, indent=2)
+        output = format_output_as_json(data)
     elif format_type == "yaml":
-        return yaml.dump(data, sort_keys=False)
+        output = format_output_as_yaml(data)
     elif format_type == "markdown":
-        output = []
+        output = format_output_as_markdown(data)
+    else:
+        output = format_output_as_text(data, use_color=use_color)
+    return output
 
-        # Add title and timestamp
-        output.extend(
-            [
-                "# Mac System Information",
-                "",
-                f"*Generated on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}*",
-                "",
-            ]
-        )
 
-        # Hardware section
-        if "hardware" in data:
-            hw = data["hardware"]
-            output.extend(
-                [
-                    "## Hardware Information",
-                    "",
-                    "### System",
-                    f"- **Model:** {hw['model_name']}",
-                    f"- **Identifier:** {hw['device_identifier']}",
-                    f"- **Model Number:** {hw['model_number']}",
-                    f"- **Serial Number:** {hw['serial_number']}",
-                    "",
-                    "### Processor",
-                    f"- **Chip:** {hw['processor']}",
-                    "- **CPU Cores:** "
-                    f"{hw['cpu_cores']} ({hw['performance_cores']} performance and "
-                    f"{hw['efficiency_cores']} efficiency)",
-                    f"- **GPU Cores:** {hw['gpu_cores']}",
-                    "",
-                    "### Memory",
-                    f"- **Total:** {hw['memory']['total']}",
-                    f"- **Type:** {hw['memory']['type']}",
-                    f"- **Speed:** {hw['memory']['speed']}",
-                    f"- **Manufacturer:** {hw['memory']['manufacturer']}",
-                    f"- **ECC:** {'Yes' if hw['memory']['ecc'] else 'No'}",
-                    "",
-                    "### Storage",
-                    f"- **Model:** {hw['storage']['model']}",
-                    f"- **Type:** {hw['storage']['type']}",
-                    f"- **Protocol:** {hw['storage']['protocol']}",
-                    f"- **Size:** {hw['storage']['size']}",
-                    f"- **SMART Status:** {hw['storage']['smart_status']}",
-                    f"- **TRIM Support:** {'Yes' if hw['storage']['trim'] else 'No'}",
-                    f"- **Internal:** {'Yes' if hw['storage']['internal'] else 'No'}",
-                    "",
-                    "### Graphics",
-                ]
-            )
-
-            # Add graphics cards
-            if hw["graphics"]:
-                for i, card in enumerate(hw["graphics"], 1):
-                    output.append(f"#### Card {i}")
-                    if card["name"]:
-                        output.append(f"- **Model:** {card['name']}")
-                    if card["vendor"]:
-                        output.append(f"- **Vendor:** {card['vendor']}")
-                    if card["vram"]:
-                        output.append(f"- **VRAM:** {card['vram']}")
-                    if card["resolution"]:
-                        output.append(f"- **Resolution:** {card['resolution']}")
-                    if card["metal"]:
-                        output.append(f"- **Metal Support:** {card['metal']}")
-                    output.append("")  # Add newline after each card
-            else:
-                output.append("*No graphics cards detected*\n")
-
-            output.extend(
-                [
-                    "### Wireless",
-                    "- **Bluetooth:** "
-                    f"{hw['bluetooth_chipset']} ({hw['bluetooth_firmware']}) "
-                    f"via {hw['bluetooth_transport']}",
-                    "",
-                    "### System Software",
-                    f"- **macOS Version:** {hw['macos_version']}",
-                    f"- **Build:** {hw['macos_build']}",
-                    f"- **Uptime:** {hw['uptime']}",
-                ]
-            )
-
-        # Battery section if available
-        if "battery" in data:
-            bat = data["battery"]
-            output.extend(
-                [
-                    "",
-                    "## Battery Information",
-                    "",
-                    f"- **Current Charge:** {bat['current_charge']}",
-                    f"- **Health:** {bat['health_percentage']:.1f}%",
-                    f"- **Full Charge Capacity:** {bat['full_charge_capacity']}",
-                    f"- **Design Capacity:** {bat['design_capacity']}",
-                    f"- **Manufacture Date:** {bat['manufacture_date']}",
-                    f"- **Cycle Count:** {bat['cycle_count']}",
-                    "- **Temperature:** "
-                    f"{bat['temperature_celsius']:.1f}°C / "
-                    f"{bat['temperature_fahrenheit']:.1f}°F",
-                    f"- **Charging Power:** {bat['charging_power']:.1f} Watts",
-                    f"- **Low Power Mode:** {'Enabled' if bat['low_power_mode'] else 'Disabled'}",
-                ]
-            )
-
-        return "\n".join(output)
-    else:  # text format
-        output = []
-
-        # Hardware section first
-        if "hardware" in data:
-            hw = data["hardware"]
-            output.extend(
-                [
-                    "\nHARDWARE INFORMATION",
-                    "===================",
-                    f"Model: {hw['model_name']}",
-                    f"Identifier: {hw['device_identifier']}",
-                    f"Model Number: {hw['model_number']}",
-                    f"Serial Number: {hw['serial_number']}",
-                    "",
-                    "Processor",
-                    "---------",
-                    hw["processor"],
-                    "CPU Cores: "
-                    f"{hw['cpu_cores']} ({hw['performance_cores']} performance and "
-                    f"{hw['efficiency_cores']} efficiency)",
-                    f"GPU Cores: {hw['gpu_cores']}",
-                    "",
-                    "Memory",
-                    "------",
-                    f"Total: {hw['memory']['total']}",
-                    f"Type: {hw['memory']['type']}",
-                    f"Speed: {hw['memory']['speed']}",
-                    f"Manufacturer: {hw['memory']['manufacturer']}",
-                    f"ECC: {'Yes' if hw['memory']['ecc'] else 'No'}",
-                    "",
-                    "Storage",
-                    "-------",
-                    f"Model: {hw['storage']['model']}",
-                    f"Type: {hw['storage']['type']}",
-                    f"Protocol: {hw['storage']['protocol']}",
-                    f"Size: {hw['storage']['size']}",
-                    f"SMART Status: {hw['storage']['smart_status']}",
-                    f"TRIM Support: {'Yes' if hw['storage']['trim'] else 'No'}",
-                    f"Internal: {'Yes' if hw['storage']['internal'] else 'No'}",
-                    "",
-                    "Graphics",
-                    "--------",
-                ]
-            )
-
-            # Add graphics cards
-            if hw["graphics"]:
-                for i, card in enumerate(hw["graphics"], 1):
-                    card_info = [f"Card {i}:"]
-                    if card["name"]:
-                        card_info.append(f"  Model: {card['name']}")
-                    if card["vendor"]:
-                        card_info.append(f"  Vendor: {card['vendor']}")
-                    if card["vram"]:
-                        card_info.append(f"  VRAM: {card['vram']}")
-                    if card["resolution"]:
-                        card_info.append(f"  Resolution: {card['resolution']}")
-                    if card["metal"]:
-                        card_info.append(f"  Metal Support: {card['metal']}")
-                    output.extend(card_info)
-            else:
-                output.append("No graphics cards detected")
-
-            output.extend(
-                [
-                    "",
-                    "Wireless",
-                    "--------",
-                    "Bluetooth: "
-                    f"{hw['bluetooth_chipset']} ({hw['bluetooth_firmware']}) "
-                    f"via {hw['bluetooth_transport']}",
-                    "",
-                    "System",
-                    "------",
-                    f"macOS Version: {hw['macos_version']}",
-                    f"Build: {hw['macos_build']}",
-                    f"Uptime: {hw['uptime']}",
-                ]
-            )
-
-        # Battery section if available
-        if "battery" in data:
-            bat = data["battery"]
-            output.extend(
-                [
-                    "\nBATTERY INFORMATION",
-                    "==================",
-                    f"Current Charge: {bat['current_charge']}",
-                    f"Health: {bat['health_percentage']:.1f}%",
-                    f"Full Charge Capacity: {bat['full_charge_capacity']}",
-                    f"Design Capacity: {bat['design_capacity']}",
-                    f"Manufacture Date: {bat['manufacture_date']}",
-                    f"Cycle Count: {bat['cycle_count']}",
-                    "Temperature: "
-                    f"{bat['temperature_celsius']:.1f}°C / "
-                    f"{bat['temperature_fahrenheit']:.1f}°F",
-                    f"Charging Power: {bat['charging_power']:.1f} Watts",
-                    f"Low Power Mode: {'Enabled' if bat['low_power_mode'] else 'Disabled'}",
-                ]
-            )
-
-        return "\n".join(output)
+def should_use_color(
+    format_type: str, output_target: Optional[str], force: bool, disable: bool
+) -> bool:
+    use_color = False
+    if format_type == "text" and not disable:
+        output_is_stdout = output_target in (None, "-")
+        if output_is_stdout:
+            if force:
+                use_color = True
+            elif not os.environ.get("NO_COLOR") and os.environ.get("TERM", "").lower() != "dumb":
+                use_color = sys.stdout.isatty()
+    return use_color
 
 
 def main() -> None:
     """Main entry point for the CLI."""
-    parser = argparse.ArgumentParser(description="Gather detailed information about your Mac.")
-    parser.add_argument(
+    description = "Gather detailed information about your Mac."
+    examples = "\n".join(
+        [
+            "Examples:",
+            "  about-this-mac",
+            "  about-this-mac --section hardware",
+            "  about-this-mac --format json",
+            "  about-this-mac --plain --output report.txt",
+            "  about-this-mac --hardware-info",
+        ]
+    )
+    parser = argparse.ArgumentParser(
+        description=description,
+        epilog=examples,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+
+    format_group = parser.add_mutually_exclusive_group()
+    format_group.add_argument(
         "--format",
         choices=["text", "json", "yaml", "markdown", "public", "simple"],
         default="text",
         help='Output format (use "public" for sales-friendly output)',
     )
+    format_group.add_argument(
+        "--json",
+        action="store_const",
+        const="json",
+        dest="format",
+        help='Shorthand for "--format json"',
+    )
+    format_group.add_argument(
+        "--plain",
+        action="store_const",
+        const="text",
+        dest="format",
+        help='Shorthand for "--format text"',
+    )
+
     parser.add_argument(
         "--section",
         choices=["hardware", "battery", "all"],
@@ -265,14 +108,37 @@ def main() -> None:
         help="Information section to display",
     )
     parser.add_argument(
+        "-o",
         "--output",
-        help="Save output to file (default: auto-generate filename for markdown)",
+        help="Save output to file (use '-' for stdout)",
     )
-    parser.add_argument(
+
+    verbosity = parser.add_mutually_exclusive_group()
+    verbosity.add_argument(
+        "-v",
         "--verbose",
         action="store_true",
         help="Show detailed debug information",
     )
+    verbosity.add_argument(
+        "-q",
+        "--quiet",
+        action="store_true",
+        help="Suppress non-essential output",
+    )
+
+    color_group = parser.add_mutually_exclusive_group()
+    color_group.add_argument(
+        "--color",
+        action="store_true",
+        help="Force colored output",
+    )
+    color_group.add_argument(
+        "--no-color",
+        action="store_true",
+        help="Disable colored output",
+    )
+
     parser.add_argument(
         "--version",
         action="version",
@@ -323,11 +189,20 @@ def main() -> None:
 
     args = parser.parse_args()
 
+    log_level = logging.WARNING
+    if args.verbose:
+        log_level = logging.DEBUG
+    elif args.quiet:
+        log_level = logging.ERROR
+    logging.basicConfig(
+        level=log_level, format="%(asctime)s - %(levelname)s - %(message)s", force=True
+    )
+
     try:
         gatherer = MacInfoGatherer(verbose=args.verbose)
 
         if args.release_date:
-            release_date = gatherer._get_release_date()
+            release_date = gatherer.get_release_date()
             if release_date:
                 print(f"Release Date: {release_date}")
             else:
@@ -353,13 +228,15 @@ def main() -> None:
                     [
                         "\nHardware Information (system_profiler SPHardwareDataType):",
                         "=" * 60,
-                        gatherer._run_command(["system_profiler", "SPHardwareDataType"]),
+                        gatherer.run_command(
+                            ["system_profiler", "SPHardwareDataType"], privileged=True
+                        ),
                         "\nCPU Information (sysctl):",
                         "=" * 60,
-                        f"hw.model: {gatherer._get_sysctl_value('hw.model')}",
-                        f"hw.ncpu: {gatherer._get_sysctl_value('hw.ncpu')}",
+                        f"hw.model: {gatherer.get_sysctl_value('hw.model')}",
+                        f"hw.ncpu: {gatherer.get_sysctl_value('hw.ncpu')}",
                         "machdep.cpu.brand_string: "
-                        f"{gatherer._get_sysctl_value('machdep.cpu.brand_string')}",
+                        f"{gatherer.get_sysctl_value('machdep.cpu.brand_string')}",
                     ]
                 )
 
@@ -368,10 +245,12 @@ def main() -> None:
                     [
                         "\nPower Information (system_profiler SPPowerDataType):",
                         "=" * 60,
-                        gatherer._run_command(["system_profiler", "SPPowerDataType"]),
+                        gatherer.run_command(
+                            ["system_profiler", "SPPowerDataType"], privileged=True
+                        ),
                         "\nBattery Status (pmset):",
                         "=" * 60,
-                        gatherer._run_command(["pmset", "-g", "batt"], privileged=False),
+                        gatherer.run_command(["pmset", "-g", "batt"], privileged=False),
                     ]
                 )
 
@@ -380,7 +259,9 @@ def main() -> None:
                     [
                         "\nGraphics Information (system_profiler SPDisplaysDataType):",
                         "=" * 60,
-                        gatherer._run_command(["system_profiler", "SPDisplaysDataType"]),
+                        gatherer.run_command(
+                            ["system_profiler", "SPDisplaysDataType"], privileged=True
+                        ),
                     ]
                 )
 
@@ -389,13 +270,19 @@ def main() -> None:
                     [
                         "\nNVMe Storage Information (system_profiler SPNVMeDataType):",
                         "=" * 60,
-                        gatherer._run_command(["system_profiler", "SPNVMeDataType"]),
+                        gatherer.run_command(
+                            ["system_profiler", "SPNVMeDataType"], privileged=True
+                        ),
                         "\nSATA Storage Information (system_profiler SPSerialATADataType):",
                         "=" * 60,
-                        gatherer._run_command(["system_profiler", "SPSerialATADataType"]),
+                        gatherer.run_command(
+                            ["system_profiler", "SPSerialATADataType"], privileged=True
+                        ),
                         "\nGeneral Storage Information (system_profiler SPStorageDataType):",
                         "=" * 60,
-                        gatherer._run_command(["system_profiler", "SPStorageDataType"]),
+                        gatherer.run_command(
+                            ["system_profiler", "SPStorageDataType"], privileged=True
+                        ),
                     ]
                 )
 
@@ -404,10 +291,12 @@ def main() -> None:
                     [
                         "\nMemory Information (system_profiler SPMemoryDataType):",
                         "=" * 60,
-                        gatherer._run_command(["system_profiler", "SPMemoryDataType"]),
+                        gatherer.run_command(
+                            ["system_profiler", "SPMemoryDataType"], privileged=True
+                        ),
                         "\nMemory Size (sysctl):",
                         "=" * 60,
-                        f"hw.memsize: {gatherer._get_sysctl_value('hw.memsize')}",
+                        f"hw.memsize: {gatherer.get_sysctl_value('hw.memsize')}",
                     ]
                 )
 
@@ -416,7 +305,9 @@ def main() -> None:
                     [
                         "\nAudio Information (system_profiler SPAudioDataType):",
                         "=" * 60,
-                        gatherer._run_command(["system_profiler", "SPAudioDataType"]),
+                        gatherer.run_command(
+                            ["system_profiler", "SPAudioDataType"], privileged=True
+                        ),
                     ]
                 )
 
@@ -425,16 +316,18 @@ def main() -> None:
                     [
                         "\nNetwork Interfaces (networksetup):",
                         "=" * 60,
-                        gatherer._run_command(
+                        gatherer.run_command(
                             ["networksetup", "-listallhardwareports"],
                             privileged=False,
                         ),
                         "\nNetwork Status (netstat):",
                         "=" * 60,
-                        gatherer._run_command(["netstat", "-i"], privileged=False),
+                        gatherer.run_command(["netstat", "-i"], privileged=False),
                         "\nBluetooth Information (system_profiler SPBluetoothDataType):",
                         "=" * 60,
-                        gatherer._run_command(["system_profiler", "SPBluetoothDataType"]),
+                        gatherer.run_command(
+                            ["system_profiler", "SPBluetoothDataType"], privileged=True
+                        ),
                     ]
                 )
 
@@ -450,26 +343,25 @@ def main() -> None:
             if battery_info:
                 data["battery"] = asdict(battery_info)
 
+        use_color = should_use_color(args.format, args.output, args.color, args.no_color)
+
         # Format the output
-        output = format_output(data, args.format, gatherer)
+        output = format_output(data, args.format, gatherer, use_color=use_color)
 
-        # Handle output
-        if args.output or args.format == "markdown":
-            output_file = args.output
-            if not output_file and args.format == "markdown":
-                # Generate default filename for markdown
-                model_name = data["hardware"]["model_name"].replace(" ", "-").lower()
-                date_str = datetime.now().strftime("%Y-%m-%d")
-                output_file = f"mac-info-{model_name}-{date_str}.md"
-
-            with open(output_file, "w", encoding="utf-8") as f:
+        # Handle output: only write to a file if --output is explicitly provided
+        if args.output and args.output != "-":
+            with open(args.output, "w", encoding="utf-8") as f:
                 f.write(output)
-            print(f"Output saved to {output_file}")
+            if not args.quiet:
+                print(f"Output saved to {args.output}", file=sys.stderr)
         else:
             print(output)
 
     except Exception as e:
-        logger.error("An error occurred: %s", e)
+        if args.verbose:
+            logger.exception("Unexpected error")
+        else:
+            logger.error("Error: %s", e)
         sys.exit(1)
 
 

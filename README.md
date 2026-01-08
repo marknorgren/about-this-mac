@@ -89,7 +89,8 @@ just dev-setup  # Install in development mode
 You can install directly from GitHub:
 
 ```sh
-python3 -m pip install git+https://github.com/marknorgren/about-this-mac.git
+# Install with pipx
+pipx install git+https://github.com/marknorgren/about-this-mac.git
 ```
 
 After installation, you can run the tool using the `about-this-mac` command:
@@ -124,6 +125,13 @@ If you've cloned the repository, you can use `just` commands for common operatio
 just
 ```
 
+Or run directly with uv:
+
+```sh
+uv sync --extra dev
+uv run about-this-mac
+```
+
 ### Command Line Options
 
 You can run the tool with various options:
@@ -134,15 +142,19 @@ about-this-mac
 
 # With specific format
 about-this-mac --format [text|json|yaml|markdown|public|simple]
+about-this-mac --json     # shorthand for --format json
+about-this-mac --plain    # shorthand for --format text
 
 # Show specific section
 about-this-mac --section [hardware|battery|all]
 
 # Save to file
 about-this-mac --output report.md
+about-this-mac -o -       # write to stdout explicitly
 
 # Show verbose output
 about-this-mac --verbose
+about-this-mac --quiet
 
 # Show raw information
 about-this-mac --hardware-info  # Raw hardware info
@@ -152,13 +164,17 @@ about-this-mac --storage-info   # Raw storage info
 about-this-mac --memory-info    # Raw memory info
 about-this-mac --audio-info     # Raw audio info
 about-this-mac --network-info   # Raw network info
+
+# Color controls (text output only)
+about-this-mac --color
+about-this-mac --no-color
 ```
 
 ### Permission Levels
 
 The script provides different levels of information based on permissions:
 
-#### Without sudo (Basic Information):
+#### Without sudo (Basic Information)
 
 - Basic hardware model
 - Memory size
@@ -183,6 +199,9 @@ The script provides different levels of information based on permissions:
 4. **JSON**: Structured data in JSON format
 5. **YAML**: Structured data in YAML format
 6. **Markdown**: Formatted report with sections and details
+
+Color is applied only to text output, only when writing to a TTY. It respects
+`NO_COLOR` and `TERM=dumb`, and is disabled automatically when writing to a file.
 
 ## Error Handling
 
