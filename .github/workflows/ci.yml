@@ -73,6 +73,11 @@ jobs:
         run: |
           brew install just
 
+      - name: 📦 Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
       - name: 📦 Install dependencies
         run: |
           uv sync --extra dev
@@ -115,6 +120,11 @@ jobs:
       - name: 🛠️ Install just
         run: |
           brew install just
+
+      - name: 📦 Install uv  
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
 
       - name: 📦 Install package
         run: |
