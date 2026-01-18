@@ -73,47 +73,86 @@ The script uses various macOS system commands to gather information:
 
 ## Installation
 
-### From GitHub (Development)
+### Quick Run (No Install)
 
-Clone the repository and install in development mode:
-
-```sh
-git clone https://github.com/marknorgren/about-this-mac.git
-cd about-this-mac
-just setup  # Install dependencies
-just dev-setup  # Install in development mode
-```
-
-### From GitHub (Direct Use)
-
-You can install directly from GitHub:
-
-```sh
-# Install with pipx
-pipx install git+https://github.com/marknorgren/about-this-mac.git
-```
-
-After installation, you can run the tool using the `about-this-mac` command:
-
-```sh
-about-this-mac
-```
-
-### Run Without Installing (using uvx)
-
-You can run the tool directly without installing it using `uvx` (part of the `uv` package manager):
+Run directly without installing using `uvx`:
 
 ```sh
 # Install uv if you haven't already
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# Run the tool directly from GitHub
+# Run directly from GitHub
 uvx --from git+https://github.com/marknorgren/about-this-mac.git about-this-mac
-
-# Or run with specific options
 uvx --from git+https://github.com/marknorgren/about-this-mac.git about-this-mac --format json
-uvx --from git+https://github.com/marknorgren/about-this-mac.git about-this-mac --verbose
 ```
+
+### Install as CLI Tool
+
+**uv tool** (recommended):
+```sh
+uv tool install git+https://github.com/marknorgren/about-this-mac.git
+about-this-mac
+```
+
+**pipx**:
+```sh
+pipx install git+https://github.com/marknorgren/about-this-mac.git
+about-this-mac
+```
+
+**pip** (in a venv):
+```sh
+python -m venv ~/.venvs/about-this-mac
+source ~/.venvs/about-this-mac/bin/activate
+pip install git+https://github.com/marknorgren/about-this-mac.git
+about-this-mac
+```
+
+### Development Setup
+
+```sh
+git clone https://github.com/marknorgren/about-this-mac.git
+cd about-this-mac
+uv sync --extra dev
+uv run about-this-mac
+```
+
+### Installation Methods Compared
+
+| Method | Isolated | Global CLI | Best For |
+|--------|----------|------------|----------|
+| `uvx` | Yes | No (temp) | One-off runs, trying it out |
+| `uv tool install` | Yes | Yes | Daily use, fast installs |
+| `pipx install` | Yes | Yes | Daily use, if you don't have uv |
+| `pip install` (venv) | Yes | No | Project-specific use |
+| `pip install` (system) | No | Yes | Not recommended |
+
+**Key differences:**
+
+- **uvx**: Downloads and runs in a temporary environment. Nothing persists after the command finishes. Ideal for quick one-off usage.
+- **uv tool install**: Installs in an isolated environment (~/.local/share/uv/tools/) but adds the CLI to your PATH. Fast, clean, recommended.
+- **pipx install**: Same isolation concept as uv tool, but slower. Use if you prefer pipx or don't have uv.
+- **pip install (venv)**: Installs into a specific virtual environment. You must activate the venv to use the CLI.
+- **pip install (system)**: Installs into your system Python. Can cause conflicts with other packages. Avoid.
+
+### Updating
+
+**uv tool**:
+```sh
+uv tool upgrade about-this-mac
+```
+
+**pipx**:
+```sh
+pipx upgrade about-this-mac
+```
+
+**pip** (in venv):
+```sh
+pip install --upgrade git+https://github.com/marknorgren/about-this-mac.git
+```
+
+**uvx**: No update needed - always fetches the latest version.
 
 ## Usage
 
@@ -202,6 +241,31 @@ The script provides different levels of information based on permissions:
 
 Color is applied only to text output, only when writing to a TTY. It respects
 `NO_COLOR` and `TERM=dumb`, and is disabled automatically when writing to a file.
+
+## Project Structure
+
+```
+src/about_this_mac/
+├── __init__.py          # Public API exports
+├── __main__.py          # Entry point
+├── cli.py               # Argument parsing and dispatch
+├── output.py            # Output handler (text/JSON) and CliError
+├── commands/
+│   ├── __init__.py
+│   ├── raw.py           # Raw data commands (--hardware-info, etc.)
+│   └── report.py        # Main report generation
+├── battery/
+│   ├── __init__.py
+│   └── battery_info.py  # Battery data gathering
+├── hardware/
+│   ├── __init__.py
+│   └── hardware_info.py # Hardware data gathering
+└── utils/
+    ├── __init__.py
+    ├── command.py       # Command execution wrapper
+    ├── formatting.py    # Output formatters (JSON, YAML, Markdown, text)
+    └── system.py        # Platform checks and parsing
+```
 
 ## Error Handling
 

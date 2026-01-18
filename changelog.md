@@ -4,14 +4,22 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.2.2] - 2025-01-17
+
+### Changed
+
+- refactor: Restructure CLI following best practices
+  - Extract `Output` class with structured text/JSON output handling
+  - Add `CliError` for user-friendly errors with hints
+  - Move raw data commands to `commands/raw.py`
+  - Move report generation to `commands/report.py`
+  - Keep `cli.py` focused on argument parsing and dispatch
+
+## [0.2.1] - 2025-01-15
+
 ### Added
 
 - ci: Add dogfooding step to CI that runs the tool and saves outputs as artifacts
-- feat: Add battery information gathering
-- feat: Add multiple output formats (text, JSON, YAML, markdown, simple, public)
-- feat: Add comprehensive test suite
-- feat: Add GitHub Actions CI workflow for macOS
-- feat: Add proper Python package structure
 
 ### Changed
 
