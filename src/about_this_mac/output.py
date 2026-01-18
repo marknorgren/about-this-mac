@@ -47,7 +47,7 @@ class Output:
         if not self._quiet:
             print(message, file=sys.stderr)
 
-    def error(self, message: str, hint: Optional[str] = None) -> NoReturn:
+    def error(self, message: str, hint: Optional[str] = None, exit_code: int = 1) -> NoReturn:
         """Print error and exit."""
         if self._json_mode:
             error_data: Dict[str, Any] = {"error": message}
@@ -58,13 +58,13 @@ class Output:
             print(f"Error: {message}", file=sys.stderr)
             if hint:
                 print(f"Hint: {hint}", file=sys.stderr)
-        sys.exit(1)
+        sys.exit(exit_code)
 
 
 def handle_error(error: Exception, output: Output, verbose: bool = False) -> NoReturn:
     """Handle exceptions with appropriate output."""
     if isinstance(error, CliError):
-        output.error(str(error), error.hint)
+        output.error(str(error), error.hint, exit_code=error.exit_code)
     elif verbose:
         logging.exception("Unexpected error")
         output.error(str(error))
