@@ -4,64 +4,15 @@
 
 import argparse
 import logging
-import os
-import sys
-from dataclasses import asdict
-from typing import Dict, Optional, Any
 
-from about_this_mac import MacInfoGatherer
-from about_this_mac import __version__
-from about_this_mac.utils.formatting import (
-    format_output_as_json,
-    format_output_as_yaml,
-    format_output_as_markdown,
-    format_output_as_text,
-)
-
-logger = logging.getLogger(__name__)
+from about_this_mac import MacInfoGatherer, __version__
+from about_this_mac.commands.raw import has_raw_args, run_raw_commands
+from about_this_mac.commands.report import run_report
+from about_this_mac.output import CliError, Output, handle_error
 
 
-def format_output(
-    data: Dict[str, Any],
-    format_type: str,
-    gatherer: Optional[MacInfoGatherer] = None,
-    use_color: bool = False,
-) -> str:
-    """Format the output according to the specified format."""
-    output = ""
-    if format_type == "simple":
-        gatherer = gatherer or MacInfoGatherer()
-        output = gatherer.format_simple_output(data)
-    elif format_type == "public":
-        gatherer = gatherer or MacInfoGatherer()
-        output = gatherer.format_public_output(data)
-    elif format_type == "json":
-        output = format_output_as_json(data)
-    elif format_type == "yaml":
-        output = format_output_as_yaml(data)
-    elif format_type == "markdown":
-        output = format_output_as_markdown(data)
-    else:
-        output = format_output_as_text(data, use_color=use_color)
-    return output
-
-
-def should_use_color(
-    format_type: str, output_target: Optional[str], force: bool, disable: bool
-) -> bool:
-    use_color = False
-    if format_type == "text" and not disable:
-        output_is_stdout = output_target in (None, "-")
-        if output_is_stdout:
-            if force:
-                use_color = True
-            elif not os.environ.get("NO_COLOR") and os.environ.get("TERM", "").lower() != "dumb":
-                use_color = sys.stdout.isatty()
-    return use_color
-
-
-def main() -> None:
-    """Main entry point for the CLI."""
+def _create_parser() -> argparse.ArgumentParser:
+    """Create and configure the argument parser."""
     description = "Gather detailed information about your Mac."
     examples = "\n".join(
         [
@@ -79,6 +30,7 @@ def main() -> None:
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
 
+    # Format options
     format_group = parser.add_mutually_exclusive_group()
     format_group.add_argument(
         "--format",
@@ -101,6 +53,7 @@ def main() -> None:
         help='Shorthand for "--format text"',
     )
 
+    # Section and output
     parser.add_argument(
         "--section",
         choices=["hardware", "battery", "all"],
@@ -113,6 +66,7 @@ def main() -> None:
         help="Save output to file (use '-' for stdout)",
     )
 
+    # Verbosity
     verbosity = parser.add_mutually_exclusive_group()
     verbosity.add_argument(
         "-v",
@@ -127,6 +81,7 @@ def main() -> None:
         help="Suppress non-essential output",
     )
 
+    # Color control
     color_group = parser.add_mutually_exclusive_group()
     color_group.add_argument(
         "--color",
@@ -145,7 +100,7 @@ def main() -> None:
         version=f"%(prog)s {__version__}",
     )
 
-    # Add raw data mode arguments
+    # Raw data mode arguments
     parser.add_argument(
         "--hardware-info",
         action="store_true",
@@ -187,182 +142,59 @@ def main() -> None:
         help="Show raw release date information",
     )
 
+    return parser
+
+
+def _configure_logging(verbose: bool, quiet: bool) -> None:
+    """Configure logging based on verbosity settings."""
+    if verbose:
+        level = logging.DEBUG
+    elif quiet:
+        level = logging.ERROR
+    else:
+        level = logging.WARNING
+
+    logging.basicConfig(
+        level=level,
+        format="%(asctime)s - %(levelname)s - %(message)s",
+        force=True,
+    )
+
+
+def main() -> None:
+    """Main entry point for the CLI."""
+    parser = _create_parser()
     args = parser.parse_args()
 
-    log_level = logging.WARNING
-    if args.verbose:
-        log_level = logging.DEBUG
-    elif args.quiet:
-        log_level = logging.ERROR
-    logging.basicConfig(
-        level=log_level, format="%(asctime)s - %(levelname)s - %(message)s", force=True
+    _configure_logging(args.verbose, args.quiet)
+
+    output = Output(
+        json_mode=args.format == "json",
+        quiet=args.quiet,
     )
 
     try:
         gatherer = MacInfoGatherer(verbose=args.verbose)
 
+        # Handle release date command
         if args.release_date:
             release_date = gatherer.get_release_date()
             if release_date:
-                print(f"Release Date: {release_date}")
+                output.raw(f"Release Date: {release_date}")
             else:
-                print("Release date information not available")
+                raise CliError("Release date information not available")
             return
 
-        # Handle raw data mode requests
-        if any(
-            [
-                args.hardware_info,
-                args.power_info,
-                args.graphics_info,
-                args.storage_info,
-                args.memory_info,
-                args.audio_info,
-                args.network_info,
-            ]
-        ):
-            raw_data = []
-
-            if args.hardware_info:
-                raw_data.extend(
-                    [
-                        "\nHardware Information (system_profiler SPHardwareDataType):",
-                        "=" * 60,
-                        gatherer.run_command(
-                            ["system_profiler", "SPHardwareDataType"], privileged=True
-                        ),
-                        "\nCPU Information (sysctl):",
-                        "=" * 60,
-                        f"hw.model: {gatherer.get_sysctl_value('hw.model')}",
-                        f"hw.ncpu: {gatherer.get_sysctl_value('hw.ncpu')}",
-                        "machdep.cpu.brand_string: "
-                        f"{gatherer.get_sysctl_value('machdep.cpu.brand_string')}",
-                    ]
-                )
-
-            if args.power_info:
-                raw_data.extend(
-                    [
-                        "\nPower Information (system_profiler SPPowerDataType):",
-                        "=" * 60,
-                        gatherer.run_command(
-                            ["system_profiler", "SPPowerDataType"], privileged=True
-                        ),
-                        "\nBattery Status (pmset):",
-                        "=" * 60,
-                        gatherer.run_command(["pmset", "-g", "batt"], privileged=False),
-                    ]
-                )
-
-            if args.graphics_info:
-                raw_data.extend(
-                    [
-                        "\nGraphics Information (system_profiler SPDisplaysDataType):",
-                        "=" * 60,
-                        gatherer.run_command(
-                            ["system_profiler", "SPDisplaysDataType"], privileged=True
-                        ),
-                    ]
-                )
-
-            if args.storage_info:
-                raw_data.extend(
-                    [
-                        "\nNVMe Storage Information (system_profiler SPNVMeDataType):",
-                        "=" * 60,
-                        gatherer.run_command(
-                            ["system_profiler", "SPNVMeDataType"], privileged=True
-                        ),
-                        "\nSATA Storage Information (system_profiler SPSerialATADataType):",
-                        "=" * 60,
-                        gatherer.run_command(
-                            ["system_profiler", "SPSerialATADataType"], privileged=True
-                        ),
-                        "\nGeneral Storage Information (system_profiler SPStorageDataType):",
-                        "=" * 60,
-                        gatherer.run_command(
-                            ["system_profiler", "SPStorageDataType"], privileged=True
-                        ),
-                    ]
-                )
-
-            if args.memory_info:
-                raw_data.extend(
-                    [
-                        "\nMemory Information (system_profiler SPMemoryDataType):",
-                        "=" * 60,
-                        gatherer.run_command(
-                            ["system_profiler", "SPMemoryDataType"], privileged=True
-                        ),
-                        "\nMemory Size (sysctl):",
-                        "=" * 60,
-                        f"hw.memsize: {gatherer.get_sysctl_value('hw.memsize')}",
-                    ]
-                )
-
-            if args.audio_info:
-                raw_data.extend(
-                    [
-                        "\nAudio Information (system_profiler SPAudioDataType):",
-                        "=" * 60,
-                        gatherer.run_command(
-                            ["system_profiler", "SPAudioDataType"], privileged=True
-                        ),
-                    ]
-                )
-
-            if args.network_info:
-                raw_data.extend(
-                    [
-                        "\nNetwork Interfaces (networksetup):",
-                        "=" * 60,
-                        gatherer.run_command(
-                            ["networksetup", "-listallhardwareports"],
-                            privileged=False,
-                        ),
-                        "\nNetwork Status (netstat):",
-                        "=" * 60,
-                        gatherer.run_command(["netstat", "-i"], privileged=False),
-                        "\nBluetooth Information (system_profiler SPBluetoothDataType):",
-                        "=" * 60,
-                        gatherer.run_command(
-                            ["system_profiler", "SPBluetoothDataType"], privileged=True
-                        ),
-                    ]
-                )
-
-            print("\n".join(raw_data))
+        # Handle raw data commands
+        if has_raw_args(args):
+            run_raw_commands(args, gatherer, output)
             return
 
-        # Gather information based on requested section
-        data = {}
-        if args.section in ["hardware", "all"]:
-            data["hardware"] = asdict(gatherer.get_hardware_info())
-        if args.section in ["battery", "all"]:
-            battery_info = gatherer.get_battery_info()
-            if battery_info:
-                data["battery"] = asdict(battery_info)
-
-        use_color = should_use_color(args.format, args.output, args.color, args.no_color)
-
-        # Format the output
-        output = format_output(data, args.format, gatherer, use_color=use_color)
-
-        # Handle output: only write to a file if --output is explicitly provided
-        if args.output and args.output != "-":
-            with open(args.output, "w", encoding="utf-8") as f:
-                f.write(output)
-            if not args.quiet:
-                print(f"Output saved to {args.output}", file=sys.stderr)
-        else:
-            print(output)
+        # Default: generate report
+        run_report(args, gatherer, output)
 
     except Exception as e:
-        if args.verbose:
-            logger.exception("Unexpected error")
-        else:
-            logger.error("Error: %s", e)
-        sys.exit(1)
+        handle_error(e, output, args.verbose)
 
 
 if __name__ == "__main__":
