@@ -51,4 +51,6 @@ coverage.xml
 .LSOverride 
 .claude/
 
+# Git worktrees
 worktrees/
+.claude/settings.local.json
