@@ -389,7 +389,7 @@ class MacInfoGatherer(BatteryInfoGatherer):
                     controller.get("controller_firmwareVersion", "Unknown"),
                     controller.get("controller_transport", "Unknown"),
                 )
-        except:
+        except (json.JSONDecodeError, KeyError, IndexError):
             pass
         return ("Unknown", "Unknown", "Unknown")
 
@@ -497,7 +497,7 @@ class MacInfoGatherer(BatteryInfoGatherer):
                     parts.append(f"{minutes} {'minute' if minutes == 1 else 'minutes'}")
 
                 return " ".join(parts)
-        except:
+        except (ValueError, IndexError, OSError):
             pass
         return "Unknown"
 

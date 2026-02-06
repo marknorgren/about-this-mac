@@ -131,7 +131,7 @@ class BatteryInfoGatherer:
             try:
                 power_mode = self._run_command(["pmset", "-g"])
                 low_power_mode = "lowpowermode 1" in power_mode.lower()
-            except:
+            except OSError:
                 pass
 
             # Ensure we have non-None values for required fields
