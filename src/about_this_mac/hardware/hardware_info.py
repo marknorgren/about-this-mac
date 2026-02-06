@@ -64,7 +64,7 @@ class HardwareInfo:
     bluetooth_transport: str
     macos_version: str
     macos_build: str
-    uptime: str
+    uptime: int  # seconds since boot, -1 if unknown
 
 
 class MacInfoGatherer(BatteryInfoGatherer):
@@ -471,35 +471,17 @@ class MacInfoGatherer(BatteryInfoGatherer):
     def get_release_date(self) -> Tuple[str, str, str]:
         return self._get_release_date()
 
-    def _get_uptime(self) -> str:
-        """Get system uptime in a human-readable format."""
+    def _get_uptime(self) -> int:
+        """Get system uptime in seconds. Returns -1 if unknown."""
         try:
-            # Get boot time from sysctl
             boot_time = self._run_command(["sysctl", "-n", "kern.boottime"], privileged=False)
             if boot_time:
                 # Extract timestamp from format like "{ sec = 1234567890, usec = 0 }"
                 boot_timestamp = int(boot_time.split()[3].rstrip(","))
-                current_time = int(time.time())
-                uptime_seconds = current_time - boot_timestamp
-
-                days = uptime_seconds // 86400
-                uptime_seconds %= 86400
-                hours = uptime_seconds // 3600
-                uptime_seconds %= 3600
-                minutes = uptime_seconds // 60
-
-                parts = []
-                if days > 0:
-                    parts.append(f"{days} {'day' if days == 1 else 'days'}")
-                if hours > 0:
-                    parts.append(f"{hours} {'hour' if hours == 1 else 'hours'}")
-                if minutes > 0:
-                    parts.append(f"{minutes} {'minute' if minutes == 1 else 'minutes'}")
-
-                return " ".join(parts)
+                return int(time.time()) - boot_timestamp
         except (ValueError, IndexError, OSError):
             pass
-        return "Unknown"
+        return -1
 
     def _get_screen_size(self, resolution: str) -> str:
         """Determine screen size from resolution."""

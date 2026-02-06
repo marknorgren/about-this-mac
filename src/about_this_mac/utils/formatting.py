@@ -74,6 +74,15 @@ def _section_style(index: int) -> str:
     return f"{ANSI_BOLD}{color}"
 
 
+def _format_uptime_field(value: Any) -> str:
+    """Format an uptime field that may be int seconds or a pre-formatted string."""
+    if isinstance(value, int):
+        if value < 0:
+            return UNKNOWN_VALUE
+        return format_uptime(value)
+    return _stringify(value)
+
+
 def format_size(size_bytes: Union[int, float]) -> str:
     """Format size in bytes to human readable format.
 
@@ -265,7 +274,7 @@ def format_output_as_markdown(data: Dict[str, Any]) -> str:
                 "### System Software",
                 f"- **macOS Version:** {_stringify(hw.get('macos_version'))}",
                 f"- **Build:** {_stringify(hw.get('macos_build'))}",
-                f"- **Uptime:** {_stringify(hw.get('uptime'))}",
+                f"- **Uptime:** {_format_uptime_field(hw.get('uptime'))}",
             ]
         )
 
@@ -427,7 +436,7 @@ def format_output_as_text(data: Dict[str, Any], use_color: bool = False) -> str:
             [
                 f"macOS Version: {_stringify(hw.get('macos_version'))}",
                 f"Build: {_stringify(hw.get('macos_build'))}",
-                f"Uptime: {_stringify(hw.get('uptime'))}",
+                f"Uptime: {_format_uptime_field(hw.get('uptime'))}",
             ]
         )
 

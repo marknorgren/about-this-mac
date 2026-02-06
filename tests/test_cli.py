@@ -55,7 +55,7 @@ class FakeGatherer:
             bluetooth_transport="USB",
             macos_version="14.0",
             macos_build="23A344",
-            uptime="2 days 3 hours",
+            uptime=183600,
         )
 
     def get_battery_info(self) -> None:  # pragma: no cover - unused in these tests
