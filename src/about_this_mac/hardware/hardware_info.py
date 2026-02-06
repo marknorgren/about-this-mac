@@ -105,7 +105,7 @@ class MacInfoGatherer:
             )
             self._cached_hw_json = result.stdout.strip()
             return True
-        except subprocess.CalledProcessError:
+        except (subprocess.CalledProcessError, FileNotFoundError, OSError):
             self._cached_hw_json = ""
             return False
 
@@ -396,8 +396,8 @@ class MacInfoGatherer:
                     controller.get("controller_firmwareVersion", "Unknown"),
                     controller.get("controller_transport", "Unknown"),
                 )
-        except (json.JSONDecodeError, KeyError, IndexError):
-            pass
+        except (json.JSONDecodeError, KeyError, IndexError) as exc:
+            logger.debug("Failed to parse Bluetooth information: %s", exc)
         return ("Unknown", "Unknown", "Unknown")
 
     def get_hardware_info(self) -> HardwareInfo:
@@ -496,6 +496,7 @@ class MacInfoGatherer:
                 boot_timestamp = int(boot_time.split()[3].rstrip(","))
                 return int(time.time()) - boot_timestamp
         except (ValueError, IndexError, OSError):
+            # Uptime is best-effort; return sentinel when kern.boottime is unparseable.
             pass
         return -1
 

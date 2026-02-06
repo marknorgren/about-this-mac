@@ -67,6 +67,7 @@ def test_format_output_uses_simple_and_public() -> None:
     data = {
         "hardware": {
             "model_name": "MacBook Pro",
+            "device_identifier": "MacBook Pro",
             "model_size": "14-inch",
             "model_year": "2023",
             "release_date": "Jan 2023",

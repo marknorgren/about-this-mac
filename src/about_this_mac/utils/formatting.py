@@ -531,9 +531,11 @@ def format_output_as_simple(data: Dict[str, Any]) -> str:
     macos_version = _macos_version_name(_stringify(hw.get("macos_version")))
     chip_name = _clean_chip_name(hw)
 
+    device_name = _stringify(hw.get("device_identifier"), default="Mac")
+
     return "\n".join(
         [
-            "MacBook Pro",
+            device_name,
             size_date,
             "",
             f"Chip          {chip_name}",
@@ -563,33 +565,35 @@ def format_output_as_public(data: Dict[str, Any]) -> str:
     release_date = _stringify(hw.get("release_date"), default="")
 
     processor = _stringify(hw.get("processor"), default="").replace(":", "").strip()
-    if "M2" in processor:
+    is_apple_silicon = any(f"M{i}" in processor for i in range(1, 10))
+    if is_apple_silicon:
         gpu_cores_val = hw.get("gpu_cores", 0)
         gpu_label = f"{gpu_cores_val}-Core GPU" if gpu_cores_val and gpu_cores_val > 0 else ""
-        processor = (
-            f"{processor} {hw.get('cpu_cores', '')}-Core (Early {model_year}) {gpu_label}".strip()
-        )
+        processor = f"{processor} {hw.get('cpu_cores', '')}-Core ({model_year}) {gpu_label}".strip()
 
     storage = _coerce_dict(hw.get("storage"))
     storage_size = _stringify(storage.get("size"), default="Unknown")
-    if "GB" in storage_size:
+    if "TB" not in storage_size and "GB" in storage_size:
         numeric = storage_size.replace("GB", "").strip()
         try:
             val = int(numeric)
             storage_size = f"{val // 1024} TB" if val >= 1024 else f"{val} GB"
         except ValueError:
+            # Keep original storage_size string when it can't be parsed as an integer.
             pass
 
     memory = _coerce_dict(hw.get("memory"))
     memory_display = _stringify(memory.get("total")).replace("GB", " GB")
 
+    device_name = _stringify(hw.get("device_identifier"), default="Mac")
+
     return "\n".join(
         [
             "# Device",
-            "MacBook",
+            device_name,
             "",
             "# Model",
-            f"{model_size} MacBook Pro Retina",
+            f"{model_size} {device_name}",
             "",
             "# Release Date",
             release_date if release_date else f"Released in {model_year}",
