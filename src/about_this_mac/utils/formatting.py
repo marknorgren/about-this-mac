@@ -474,3 +474,133 @@ def format_output_as_text(data: Dict[str, Any], use_color: bool = False) -> str:
         )
 
     return "\n".join(output)
+
+
+def _macos_version_name(version: str) -> str:
+    """Prepend the macOS marketing name to a version string."""
+    prefixes = [
+        ("15", "Sequoia"),
+        ("14", "Sonoma"),
+        ("13", "Ventura"),
+        ("12", "Monterey"),
+        ("11", "Big Sur"),
+    ]
+    for prefix, name in prefixes:
+        if version.startswith(prefix):
+            return f"{name} {version}"
+    return version
+
+
+def _clean_chip_name(hw: Dict[str, Any]) -> str:
+    """Extract a clean processor name from hardware data."""
+    chip_name = _stringify(hw.get("processor"), default="").replace(":", "").strip()
+    if chip_name:
+        return chip_name
+    graphics = str(hw.get("graphics", ""))
+    for i in range(1, 5):
+        if f"M{i}" in graphics:
+            for variant in ("", "Pro", "Max", "Ultra"):
+                variant_name = f"M{i} {variant}".strip()
+                if variant_name in graphics:
+                    return f"Apple {variant_name}"
+    return UNKNOWN_VALUE
+
+
+def format_output_as_simple(data: Dict[str, Any]) -> str:
+    """Format data to match the macOS About This Mac summary.
+
+    Args:
+        data: Data dictionary containing a 'hardware' key.
+
+    Returns:
+        Formatted string resembling the macOS About This Mac panel.
+    """
+    if "hardware" not in data:
+        return "No hardware information available"
+
+    hw = _coerce_dict(data.get("hardware"))
+    model_size = _stringify(hw.get("model_size"), default="")
+    release_date = _stringify(hw.get("release_date"), default="")
+
+    size_date = f"{model_size}, {release_date}" if release_date else model_size
+
+    memory = _coerce_dict(hw.get("memory"))
+    memory_size = _stringify(memory.get("total")).replace("GB", " GB")
+    storage_name = "Macintosh HD"
+
+    macos_version = _macos_version_name(_stringify(hw.get("macos_version")))
+    chip_name = _clean_chip_name(hw)
+
+    return "\n".join(
+        [
+            "MacBook Pro",
+            size_date,
+            "",
+            f"Chip          {chip_name}",
+            f"Memory        {memory_size}",
+            f"Startup disk  {storage_name}",
+            f"Serial number {_stringify(hw.get('serial_number'))}",
+            f"macOS         {macos_version}",
+        ]
+    )
+
+
+def format_output_as_public(data: Dict[str, Any]) -> str:
+    """Format data in a public-friendly way suitable for sales listings.
+
+    Args:
+        data: Data dictionary containing a 'hardware' key.
+
+    Returns:
+        Formatted string with device specs for resale/listing use.
+    """
+    if "hardware" not in data:
+        return "No hardware information available"
+
+    hw = _coerce_dict(data.get("hardware"))
+    model_size = _stringify(hw.get("model_size"), default="Unknown")
+    model_year = _stringify(hw.get("model_year"), default="Unknown")
+    release_date = _stringify(hw.get("release_date"), default="")
+
+    processor = _stringify(hw.get("processor"), default="").replace(":", "").strip()
+    if "M2" in processor:
+        gpu_cores_val = hw.get("gpu_cores", 0)
+        gpu_label = f"{gpu_cores_val}-Core GPU" if gpu_cores_val and gpu_cores_val > 0 else ""
+        processor = (
+            f"{processor} {hw.get('cpu_cores', '')}-Core (Early {model_year}) {gpu_label}".strip()
+        )
+
+    storage = _coerce_dict(hw.get("storage"))
+    storage_size = _stringify(storage.get("size"), default="Unknown")
+    if "GB" in storage_size:
+        numeric = storage_size.replace("GB", "").strip()
+        try:
+            val = int(numeric)
+            storage_size = f"{val // 1024} TB" if val >= 1024 else f"{val} GB"
+        except ValueError:
+            pass
+
+    memory = _coerce_dict(hw.get("memory"))
+    memory_display = _stringify(memory.get("total")).replace("GB", " GB")
+
+    return "\n".join(
+        [
+            "# Device",
+            "MacBook",
+            "",
+            "# Model",
+            f"{model_size} MacBook Pro Retina",
+            "",
+            "# Release Date",
+            release_date if release_date else f"Released in {model_year}",
+            "",
+            "# Processor",
+            processor,
+            "",
+            "# Hard Drive",
+            f"{storage_size} SSD",
+            "",
+            "# Memory",
+            memory_display,
+        ]
+    )
