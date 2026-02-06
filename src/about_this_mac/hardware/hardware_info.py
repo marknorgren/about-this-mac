@@ -65,6 +65,9 @@ class HardwareInfo:
     macos_version: str
     macos_build: str
     uptime: int  # seconds since boot, -1 if unknown
+    release_date: str
+    model_size: str
+    model_year: str
 
 
 class MacInfoGatherer(BatteryInfoGatherer):
@@ -446,6 +449,10 @@ class MacInfoGatherer(BatteryInfoGatherer):
         # Get Bluetooth information
         bluetooth_chipset, bluetooth_firmware, bluetooth_transport = self._get_bluetooth_info()
 
+        # Get model metadata
+        _, model_size, model_year = self._get_model_info()
+        release_date, _, _ = self._get_release_date()
+
         return HardwareInfo(
             model_name=hw_data.get("machine_model", "Unknown"),
             device_identifier=hw_data.get("machine_name", "Unknown"),
@@ -465,6 +472,9 @@ class MacInfoGatherer(BatteryInfoGatherer):
             macos_version=macos_version,
             macos_build=macos_build,
             uptime=self._get_uptime(),
+            release_date=release_date,
+            model_size=model_size,
+            model_year=model_year,
         )
 
     # Public wrapper for release date helper

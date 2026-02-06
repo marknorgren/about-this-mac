@@ -135,6 +135,9 @@ def test_format_output_as_markdown_with_hardware() -> None:
             "macos_version": "14.0",
             "macos_build": "23A344",
             "uptime": 183600,
+            "release_date": "Jan 2023",
+            "model_size": "14-inch",
+            "model_year": "2023",
         }
     }
     result = format_output_as_markdown(data)
