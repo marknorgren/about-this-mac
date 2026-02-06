@@ -35,10 +35,9 @@ def test_run_raw_commands_hardware_output() -> None:
         network_info=False,
     )
 
-    with (
-        patch("about_this_mac.commands.raw.run_command", side_effect=_fake_run_command),
-        patch("about_this_mac.commands.raw.get_sysctl_value", side_effect=_fake_get_sysctl),
-    ):
+    p1 = patch("about_this_mac.commands.raw.run_command", side_effect=_fake_run_command)
+    p2 = patch("about_this_mac.commands.raw.get_sysctl_value", side_effect=_fake_get_sysctl)
+    with p1, p2:
         run_raw_commands(args, cast(MacInfoGatherer, FakeGatherer()), output)
 
     raw = buffer.getvalue()
