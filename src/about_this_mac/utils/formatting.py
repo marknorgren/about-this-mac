@@ -74,6 +74,15 @@ def _section_style(index: int) -> str:
     return f"{ANSI_BOLD}{color}"
 
 
+def _format_uptime_field(value: Any) -> str:
+    """Format an uptime field that may be int seconds or a pre-formatted string."""
+    if isinstance(value, int):
+        if value < 0:
+            return UNKNOWN_VALUE
+        return format_uptime(value)
+    return _stringify(value)
+
+
 def format_size(size_bytes: Union[int, float]) -> str:
     """Format size in bytes to human readable format.
 
@@ -265,7 +274,7 @@ def format_output_as_markdown(data: Dict[str, Any]) -> str:
                 "### System Software",
                 f"- **macOS Version:** {_stringify(hw.get('macos_version'))}",
                 f"- **Build:** {_stringify(hw.get('macos_build'))}",
-                f"- **Uptime:** {_stringify(hw.get('uptime'))}",
+                f"- **Uptime:** {_format_uptime_field(hw.get('uptime'))}",
             ]
         )
 
@@ -427,7 +436,7 @@ def format_output_as_text(data: Dict[str, Any], use_color: bool = False) -> str:
             [
                 f"macOS Version: {_stringify(hw.get('macos_version'))}",
                 f"Build: {_stringify(hw.get('macos_build'))}",
-                f"Uptime: {_stringify(hw.get('uptime'))}",
+                f"Uptime: {_format_uptime_field(hw.get('uptime'))}",
             ]
         )
 
@@ -465,3 +474,137 @@ def format_output_as_text(data: Dict[str, Any], use_color: bool = False) -> str:
         )
 
     return "\n".join(output)
+
+
+def _macos_version_name(version: str) -> str:
+    """Prepend the macOS marketing name to a version string."""
+    prefixes = [
+        ("15", "Sequoia"),
+        ("14", "Sonoma"),
+        ("13", "Ventura"),
+        ("12", "Monterey"),
+        ("11", "Big Sur"),
+    ]
+    for prefix, name in prefixes:
+        if version.startswith(prefix):
+            return f"{name} {version}"
+    return version
+
+
+def _clean_chip_name(hw: Dict[str, Any]) -> str:
+    """Extract a clean processor name from hardware data."""
+    chip_name = _stringify(hw.get("processor"), default="").replace(":", "").strip()
+    if chip_name:
+        return chip_name
+    graphics = str(hw.get("graphics", ""))
+    for i in range(1, 5):
+        if f"M{i}" in graphics:
+            for variant in ("", "Pro", "Max", "Ultra"):
+                variant_name = f"M{i} {variant}".strip()
+                if variant_name in graphics:
+                    return f"Apple {variant_name}"
+    return UNKNOWN_VALUE
+
+
+def format_output_as_simple(data: Dict[str, Any]) -> str:
+    """Format data to match the macOS About This Mac summary.
+
+    Args:
+        data: Data dictionary containing a 'hardware' key.
+
+    Returns:
+        Formatted string resembling the macOS About This Mac panel.
+    """
+    if "hardware" not in data:
+        return "No hardware information available"
+
+    hw = _coerce_dict(data.get("hardware"))
+    model_size = _stringify(hw.get("model_size"), default="")
+    release_date = _stringify(hw.get("release_date"), default="")
+
+    size_date = f"{model_size}, {release_date}" if release_date else model_size
+
+    memory = _coerce_dict(hw.get("memory"))
+    memory_size = _stringify(memory.get("total")).replace("GB", " GB")
+    storage_name = "Macintosh HD"
+
+    macos_version = _macos_version_name(_stringify(hw.get("macos_version")))
+    chip_name = _clean_chip_name(hw)
+
+    device_name = _stringify(hw.get("device_identifier"), default="Mac")
+
+    return "\n".join(
+        [
+            device_name,
+            size_date,
+            "",
+            f"Chip          {chip_name}",
+            f"Memory        {memory_size}",
+            f"Startup disk  {storage_name}",
+            f"Serial number {_stringify(hw.get('serial_number'))}",
+            f"macOS         {macos_version}",
+        ]
+    )
+
+
+def format_output_as_public(data: Dict[str, Any]) -> str:
+    """Format data in a public-friendly way suitable for sales listings.
+
+    Args:
+        data: Data dictionary containing a 'hardware' key.
+
+    Returns:
+        Formatted string with device specs for resale/listing use.
+    """
+    if "hardware" not in data:
+        return "No hardware information available"
+
+    hw = _coerce_dict(data.get("hardware"))
+    model_size = _stringify(hw.get("model_size"), default="Unknown")
+    model_year = _stringify(hw.get("model_year"), default="Unknown")
+    release_date = _stringify(hw.get("release_date"), default="")
+
+    processor = _stringify(hw.get("processor"), default="").replace(":", "").strip()
+    is_apple_silicon = any(f"M{i}" in processor for i in range(1, 10))
+    if is_apple_silicon:
+        gpu_cores_val = hw.get("gpu_cores", 0)
+        gpu_label = f"{gpu_cores_val}-Core GPU" if gpu_cores_val and gpu_cores_val > 0 else ""
+        processor = f"{processor} {hw.get('cpu_cores', '')}-Core ({model_year}) {gpu_label}".strip()
+
+    storage = _coerce_dict(hw.get("storage"))
+    storage_size = _stringify(storage.get("size"), default="Unknown")
+    if "TB" not in storage_size and "GB" in storage_size:
+        numeric = storage_size.replace("GB", "").strip()
+        try:
+            val = int(numeric)
+            storage_size = f"{val // 1024} TB" if val >= 1024 else f"{val} GB"
+        except ValueError:
+            # Keep original storage_size string when it can't be parsed as an integer.
+            pass
+
+    memory = _coerce_dict(hw.get("memory"))
+    memory_display = _stringify(memory.get("total")).replace("GB", " GB")
+
+    device_name = _stringify(hw.get("device_identifier"), default="Mac")
+
+    return "\n".join(
+        [
+            "# Device",
+            device_name,
+            "",
+            "# Model",
+            f"{model_size} {device_name}",
+            "",
+            "# Release Date",
+            release_date if release_date else f"Released in {model_year}",
+            "",
+            "# Processor",
+            processor,
+            "",
+            "# Hard Drive",
+            f"{storage_size} SSD",
+            "",
+            "# Memory",
+            memory_display,
+        ]
+    )

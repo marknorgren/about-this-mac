@@ -26,12 +26,6 @@ class FakeGatherer:
     def get_battery_info(self) -> None:
         return None
 
-    def format_simple_output(self, data: dict) -> str:
-        return "simple-output"
-
-    def format_public_output(self, data: dict) -> str:
-        return "public-output"
-
 
 def test_run_report_writes_file_and_info(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
@@ -70,8 +64,28 @@ def test_run_report_writes_stdout_when_no_output() -> None:
 
 
 def test_format_output_uses_simple_and_public() -> None:
-    data = {"hardware": {"model_name": "Test Mac"}}
+    data = {
+        "hardware": {
+            "model_name": "MacBook Pro",
+            "device_identifier": "MacBook Pro",
+            "model_size": "14-inch",
+            "model_year": "2023",
+            "release_date": "Jan 2023",
+            "processor": "Apple M2 Max",
+            "serial_number": "SER123",
+            "macos_version": "14.0",
+            "memory": {"total": "16GB"},
+            "storage": {"size": "512 GB"},
+            "graphics": [],
+            "gpu_cores": 30,
+            "cpu_cores": 12,
+        }
+    }
 
-    gatherer = cast(MacInfoGatherer, FakeGatherer())
-    assert report._format_output(data, "simple", gatherer) == "simple-output"
-    assert report._format_output(data, "public", gatherer) == "public-output"
+    simple = report._format_output(data, "simple")
+    assert "MacBook Pro" in simple
+    assert "Chip" in simple
+
+    public = report._format_output(data, "public")
+    assert "# Device" in public
+    assert "MacBook" in public
