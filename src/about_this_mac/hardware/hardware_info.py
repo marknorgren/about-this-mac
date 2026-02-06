@@ -90,14 +90,22 @@ class MacInfoGatherer:
             )
 
     def _check_permissions(self) -> bool:
-        """Check if script has necessary permissions."""
+        """Check if script has necessary permissions.
+
+        Caches the SPHardwareDataType output so get_hardware_info() can
+        reuse it without a second subprocess call.
+        """
         try:
-            # Try to access a privileged command
-            subprocess.run(
-                ["system_profiler", "SPHardwareDataType", "-json"], capture_output=True, check=True
+            result = subprocess.run(
+                ["system_profiler", "SPHardwareDataType", "-json"],
+                capture_output=True,
+                text=True,
+                check=True,
             )
+            self._cached_hw_json = result.stdout.strip()
             return True
         except subprocess.CalledProcessError:
+            self._cached_hw_json = ""
             return False
 
     def _run_command(self, command: List[str], privileged: bool = False) -> str:
@@ -393,10 +401,12 @@ class MacInfoGatherer:
 
     def get_hardware_info(self) -> HardwareInfo:
         """Gather hardware information using system_profiler and sysctl."""
-        # Get basic hardware info
-        hw_info = self._run_command(
+        # Reuse the output cached during _check_permissions() to avoid a
+        # second subprocess call for the same data.
+        hw_info = self._cached_hw_json or self._run_command(
             ["system_profiler", "SPHardwareDataType", "-json"], privileged=True
         )
+        self._cached_hw_json = ""  # allow GC
 
         if hw_info:
             hw_data = json.loads(hw_info).get("SPHardwareDataType", [{}])[0]
