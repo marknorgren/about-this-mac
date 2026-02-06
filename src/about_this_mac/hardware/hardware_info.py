@@ -7,9 +7,9 @@ import subprocess
 import re
 import time
 from dataclasses import dataclass
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any, Optional, Tuple
 
-from about_this_mac.battery import BatteryInfoGatherer
+from about_this_mac.battery import BatteryInfo, BatteryInfoGatherer
 from about_this_mac.utils.command import run_command_result
 
 logger = logging.getLogger(__name__)
@@ -70,12 +70,12 @@ class HardwareInfo:
     model_year: str
 
 
-class MacInfoGatherer(BatteryInfoGatherer):
+class MacInfoGatherer:
     """Class for gathering Mac hardware information."""
 
     def __init__(self, verbose: bool = False) -> None:
         """Initialize the gatherer."""
-        super().__init__()
+        self._battery = BatteryInfoGatherer()
         if verbose:
             logger.setLevel(logging.DEBUG)
 
@@ -113,6 +113,10 @@ class MacInfoGatherer(BatteryInfoGatherer):
         if result.stderr:
             logger.debug("Command stderr: %s", result.stderr)
         return ""
+
+    def get_battery_info(self) -> Optional[BatteryInfo]:
+        """Gather battery information by delegating to BatteryInfoGatherer."""
+        return self._battery.get_battery_info()
 
     # Public helpers for raw data access
     def run_command(self, command: List[str], privileged: bool = False) -> str:
