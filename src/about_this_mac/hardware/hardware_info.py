@@ -118,15 +118,6 @@ class MacInfoGatherer:
         """Gather battery information by delegating to BatteryInfoGatherer."""
         return self._battery.get_battery_info()
 
-    # Public helpers for raw data access
-    def run_command(self, command: List[str], privileged: bool = False) -> str:
-        """Public wrapper to run commands with optional privilege gating."""
-        return self._run_command(command, privileged=privileged)
-
-    def get_sysctl_value(self, key: str) -> str:
-        """Public wrapper for sysctl value retrieval."""
-        return self._get_sysctl_value(key)
-
     def _get_sysctl_value(self, key: str) -> str:
         """Get system information using sysctl."""
         result = run_command_result(["sysctl", "-n", key], check=False)
