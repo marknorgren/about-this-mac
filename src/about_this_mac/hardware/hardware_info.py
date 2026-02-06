@@ -76,6 +76,7 @@ class MacInfoGatherer:
     def __init__(self, verbose: bool = False) -> None:
         """Initialize the gatherer."""
         self._battery = BatteryInfoGatherer()
+        self._cached_hw_json = ""
         if verbose:
             logger.setLevel(logging.DEBUG)
 
@@ -736,4 +737,3 @@ class MacInfoGatherer:
             model_year = "Unknown"
 
         return "MacBook Pro", model_size, model_year
-

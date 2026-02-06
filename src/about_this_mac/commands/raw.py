@@ -24,7 +24,9 @@ def _get_hardware_info(perms: bool) -> List[str]:
     return [
         "\nHardware Information (system_profiler SPHardwareDataType):",
         "=" * 60,
-        _run_cmd(["system_profiler", "SPHardwareDataType"], privileged=True, has_full_permissions=perms),
+        _run_cmd(
+            ["system_profiler", "SPHardwareDataType"], privileged=True, has_full_permissions=perms
+        ),
         "\nCPU Information (sysctl):",
         "=" * 60,
         f"hw.model: {get_sysctl_value('hw.model')}",
@@ -38,7 +40,9 @@ def _get_power_info(perms: bool) -> List[str]:
     return [
         "\nPower Information (system_profiler SPPowerDataType):",
         "=" * 60,
-        _run_cmd(["system_profiler", "SPPowerDataType"], privileged=True, has_full_permissions=perms),
+        _run_cmd(
+            ["system_profiler", "SPPowerDataType"], privileged=True, has_full_permissions=perms
+        ),
         "\nBattery Status (pmset):",
         "=" * 60,
         _run_cmd(["pmset", "-g", "batt"], privileged=False, has_full_permissions=perms),
@@ -50,7 +54,9 @@ def _get_graphics_info(perms: bool) -> List[str]:
     return [
         "\nGraphics Information (system_profiler SPDisplaysDataType):",
         "=" * 60,
-        _run_cmd(["system_profiler", "SPDisplaysDataType"], privileged=True, has_full_permissions=perms),
+        _run_cmd(
+            ["system_profiler", "SPDisplaysDataType"], privileged=True, has_full_permissions=perms
+        ),
     ]
 
 
@@ -59,13 +65,19 @@ def _get_storage_info(perms: bool) -> List[str]:
     return [
         "\nNVMe Storage Information (system_profiler SPNVMeDataType):",
         "=" * 60,
-        _run_cmd(["system_profiler", "SPNVMeDataType"], privileged=True, has_full_permissions=perms),
+        _run_cmd(
+            ["system_profiler", "SPNVMeDataType"], privileged=True, has_full_permissions=perms
+        ),
         "\nSATA Storage Information (system_profiler SPSerialATADataType):",
         "=" * 60,
-        _run_cmd(["system_profiler", "SPSerialATADataType"], privileged=True, has_full_permissions=perms),
+        _run_cmd(
+            ["system_profiler", "SPSerialATADataType"], privileged=True, has_full_permissions=perms
+        ),
         "\nGeneral Storage Information (system_profiler SPStorageDataType):",
         "=" * 60,
-        _run_cmd(["system_profiler", "SPStorageDataType"], privileged=True, has_full_permissions=perms),
+        _run_cmd(
+            ["system_profiler", "SPStorageDataType"], privileged=True, has_full_permissions=perms
+        ),
     ]
 
 
@@ -74,7 +86,9 @@ def _get_memory_info(perms: bool) -> List[str]:
     return [
         "\nMemory Information (system_profiler SPMemoryDataType):",
         "=" * 60,
-        _run_cmd(["system_profiler", "SPMemoryDataType"], privileged=True, has_full_permissions=perms),
+        _run_cmd(
+            ["system_profiler", "SPMemoryDataType"], privileged=True, has_full_permissions=perms
+        ),
         "\nMemory Size (sysctl):",
         "=" * 60,
         f"hw.memsize: {get_sysctl_value('hw.memsize')}",
@@ -86,7 +100,9 @@ def _get_audio_info(perms: bool) -> List[str]:
     return [
         "\nAudio Information (system_profiler SPAudioDataType):",
         "=" * 60,
-        _run_cmd(["system_profiler", "SPAudioDataType"], privileged=True, has_full_permissions=perms),
+        _run_cmd(
+            ["system_profiler", "SPAudioDataType"], privileged=True, has_full_permissions=perms
+        ),
     ]
 
 
@@ -95,13 +111,17 @@ def _get_network_info(perms: bool) -> List[str]:
     return [
         "\nNetwork Interfaces (networksetup):",
         "=" * 60,
-        _run_cmd(["networksetup", "-listallhardwareports"], privileged=False, has_full_permissions=perms),
+        _run_cmd(
+            ["networksetup", "-listallhardwareports"], privileged=False, has_full_permissions=perms
+        ),
         "\nNetwork Status (netstat):",
         "=" * 60,
         _run_cmd(["netstat", "-i"], privileged=False, has_full_permissions=perms),
         "\nBluetooth Information (system_profiler SPBluetoothDataType):",
         "=" * 60,
-        _run_cmd(["system_profiler", "SPBluetoothDataType"], privileged=True, has_full_permissions=perms),
+        _run_cmd(
+            ["system_profiler", "SPBluetoothDataType"], privileged=True, has_full_permissions=perms
+        ),
     ]
 
 

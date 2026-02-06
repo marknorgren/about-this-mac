@@ -2,7 +2,7 @@
 
 import io
 from argparse import Namespace
-from typing import cast
+from typing import List, cast
 from unittest.mock import patch
 
 from about_this_mac import MacInfoGatherer
@@ -14,11 +14,11 @@ class FakeGatherer:
     has_full_permissions = True
 
 
-def _fake_run_command(command, **kwargs):
+def _fake_run_command(command: List[str], **kwargs: object) -> str:
     return f"cmd: {' '.join(str(c) for c in command)}"
 
 
-def _fake_get_sysctl(key, **kwargs):
+def _fake_get_sysctl(key: str, **kwargs: object) -> str:
     return f"value:{key}"
 
 

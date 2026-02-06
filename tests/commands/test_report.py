@@ -27,7 +27,6 @@ class FakeGatherer:
         return None
 
 
-
 def test_run_report_writes_file_and_info(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
