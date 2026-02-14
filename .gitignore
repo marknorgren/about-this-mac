@@ -35,6 +35,7 @@ ENV/
 mac-info-*.md
 mac-info-*.json
 mac-info-*.yaml
+reports/
 
 # Coverage
 .coverage
