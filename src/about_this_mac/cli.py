@@ -178,7 +178,7 @@ def main() -> None:
 
         # Handle release date command
         if args.release_date:
-            release_date = gatherer.get_release_date()
+            release_date, _, _ = gatherer.get_release_date()
             if release_date:
                 output.raw(f"Release Date: {release_date}")
             else:

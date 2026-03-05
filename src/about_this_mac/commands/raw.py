@@ -14,7 +14,10 @@ logger = logging.getLogger(__name__)
 def _run_cmd(command: Sequence[str], privileged: bool, has_full_permissions: bool) -> str:
     """Run a command, skipping privileged commands when permissions are limited."""
     if privileged and not has_full_permissions:
-        logger.debug("Skipping privileged command: %s", " ".join(str(c) for c in command))
+        logger.info(
+            "Skipping privileged command (run with sudo for full output): %s",
+            " ".join(str(c) for c in command),
+        )
         return ""
     return run_command(command, check=False)
 

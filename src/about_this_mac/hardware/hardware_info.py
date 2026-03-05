@@ -64,7 +64,7 @@ class HardwareInfo:
     bluetooth_transport: str
     macos_version: str
     macos_build: str
-    uptime: int  # seconds since boot, -1 if unknown
+    uptime: Optional[int]  # seconds since boot, None if unknown
     release_date: str
     model_size: str
     model_year: str
@@ -487,8 +487,8 @@ class MacInfoGatherer:
     def get_release_date(self) -> Tuple[str, str, str]:
         return self._get_release_date()
 
-    def _get_uptime(self) -> int:
-        """Get system uptime in seconds. Returns -1 if unknown."""
+    def _get_uptime(self) -> Optional[int]:
+        """Get system uptime in seconds. Returns None if unknown."""
         try:
             boot_time = self._run_command(["sysctl", "-n", "kern.boottime"], privileged=False)
             if boot_time:
@@ -496,9 +496,9 @@ class MacInfoGatherer:
                 boot_timestamp = int(boot_time.split()[3].rstrip(","))
                 return int(time.time()) - boot_timestamp
         except (ValueError, IndexError, OSError):
-            # Uptime is best-effort; return sentinel when kern.boottime is unparseable.
+            # Uptime is best-effort; return None when kern.boottime is unparseable.
             pass
-        return -1
+        return None
 
     def _get_screen_size(self, resolution: str) -> str:
         """Determine screen size from resolution."""

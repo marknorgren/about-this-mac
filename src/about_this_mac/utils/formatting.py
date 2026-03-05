@@ -75,10 +75,14 @@ def _section_style(index: int) -> str:
 
 
 def _format_uptime_field(value: Any) -> str:
-    """Format an uptime field that may be int seconds or a pre-formatted string."""
+    """Format an uptime field that may be int seconds or a pre-formatted string.
+
+    Accepts Any because this field is read from a plain dict (e.g. after JSON
+    serialisation), where the Optional[int] type from HardwareInfo is not preserved.
+    """
+    if value is None:
+        return UNKNOWN_VALUE
     if isinstance(value, int):
-        if value < 0:
-            return UNKNOWN_VALUE
         return format_uptime(value)
     return _stringify(value)
 
