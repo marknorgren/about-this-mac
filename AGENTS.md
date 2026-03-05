@@ -1,5 +1,28 @@
 # AGENTS
 
+## Private push guardrails (Entire)
+
+This repo uses a private mirror remote to keep Entire/session branch data off public remotes.
+
+- Default push remote is `private` via `remote.pushDefault=private`.
+- `core.hooksPath` is set to `.githooks`.
+- `.githooks/pre-push` blocks refs matching Entire/session patterns (`refs/heads/entire/*`, `*entire*`, `*shadow*`) unless the remote is `private`.
+- The same hook still runs `entire hooks git pre-push` for standard Entire behavior.
+
+### Verify guardrails
+
+```sh
+git config --get remote.pushDefault
+```
+
+```sh
+git config --get core.hooksPath
+```
+
+```sh
+cat .githooks/pre-push
+```
+
 ## CI parity checks (required before push/PR)
 
 Run **all** checks CI runs, in this order:

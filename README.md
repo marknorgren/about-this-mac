@@ -277,6 +277,24 @@ If you encounter any issues:
 4. Check system logs for any hardware access issues
 5. Verify Python version compatibility
 
+## Private Mirror and Entire Safety
+
+This repo can push to both a public remote and a private mirror.
+
+- Default `git push` target is `private` (`remote.pushDefault=private`).
+- `core.hooksPath` uses `.githooks`.
+- `.githooks/pre-push` blocks Entire/session refs (`refs/heads/entire/*`, `*entire*`, `*shadow*`) from non-`private` remotes.
+
+Verify local setup:
+
+```sh
+git config --get remote.pushDefault
+```
+
+```sh
+git config --get core.hooksPath
+```
+
 ## Contributing
 
 1. Fork the repository

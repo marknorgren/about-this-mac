@@ -1,5 +1,33 @@
 #!/bin/sh
 # Entire CLI hooks
-# Pre-push hook: push session logs alongside user's push
-# $1 is the remote name (e.g., "origin")
-entire hooks git pre-push "$1" || true
+# Pre-push hook:
+# 1) Block Entire/session refs from pushing to non-private remotes
+# 2) Push session logs alongside user's push
+
+set -eu
+
+remote_name="${1:-}"
+remote_url="${2:-}"
+
+tmp_input="$(mktemp)"
+cat > "$tmp_input"
+
+blocked=0
+while IFS=' ' read -r local_ref local_sha remote_ref remote_sha; do
+  case "$local_ref" in
+    refs/heads/entire/*|refs/heads/*entire*|refs/heads/*shadow*)
+      if [ "$remote_name" != "private" ]; then
+        echo "Blocked: refusing to push '$local_ref' to '$remote_name' ($remote_url)." >&2
+        blocked=1
+      fi
+      ;;
+  esac
+done < "$tmp_input"
+
+if [ "$blocked" -ne 0 ]; then
+  rm -f "$tmp_input"
+  exit 1
+fi
+
+cat "$tmp_input" | entire hooks git pre-push "$remote_name" || true
+rm -f "$tmp_input"
