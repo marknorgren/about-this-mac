@@ -3,7 +3,8 @@
 *2026-03-05T01:42:58Z by Showboat dev*
 <!-- showboat-id: a5a039f7-ea52-491b-acd0-352185fefb4b -->
 
-This walkthrough documents the refactoring of **about-this-mac** guided by John Ousterhout's *A Philosophy of Software Design* (APoSD). Each change is traced to a specific principle from the book, with before/after code to show the improvement.
+This walkthrough documents refactors in **about-this-mac** using principles from John Ousterhout's *A Philosophy of Software Design* (APoSD).  
+Each section links to the exact commit so you can inspect the full diff.
 
 ## The Refactoring at a Glance
 
@@ -17,9 +18,43 @@ Seven distinct improvements were made, each targeting a root cause identified in
 
 ## 1. Composition Over Inheritance (Ch. 4: *Modules Should Be Deep*)
 
-> *The
+Commit: [fc18129](https://github.com/marknorgren/about-this-mac/commit/fc18129e6d407b08ca5ad68cd9ff7900b21e5212)
+
+Chapter 4 argues for deep modules with clear interfaces.  
+This refactor removed inheritance from `MacInfoGatherer` and replaced it with explicit composition.
+
+### Before
+
+`MacInfoGatherer` inherited battery behavior directly:
+
+```python
+# hardware_info.py — BEFORE
+class MacInfoGatherer(BatteryInfoGatherer):
+    def __init__(self, verbose: bool = False):
+        super().__init__()
+    ...
+```
+
+### After
+
+`MacInfoGatherer` now owns a battery collaborator and delegates explicitly:
+
+```python
+# hardware_info.py — AFTER
+class MacInfoGatherer:
+    def __init__(self, verbose: bool = False) -> None:
+        self._battery = BatteryInfoGatherer()
+        ...
+
+    def get_battery_info(self) -> Optional[BatteryInfo]:
+        return self._battery.get_battery_info()
+```
+
+This makes the dependency explicit and removes inherited surface area from `MacInfoGatherer`.
 
 ## 2. Formatting as Pure Functions (Ch. 5: *Information Hiding and Leakage*)
+
+Commit: [fc48057](https://github.com/marknorgren/about-this-mac/commit/fc480576ca714a87f4034f52b8de23c25464d38c)
 
 > *"If a piece of information is needed in several places, that's a sign it should be encapsulated in a single location."*
 
@@ -52,6 +87,8 @@ def format_output_as_simple(data: Dict[str, Any]) -> str:
 This is APoSD's *temporal decomposition* anti-pattern fixed: data gathering and presentation are now separate responsibilities.
 
 ## 3. Uptime at the Presentation Layer (Ch. 7: *Pulling Complexity Downward*)
+
+Commit: [f969280](https://github.com/marknorgren/about-this-mac/commit/f969280cf6e928b1b7e1e2c8f41061abdaa2e66a)
 
 > *"It is more important for a module to have a simple interface than a simple implementation."*
 
@@ -97,9 +134,12 @@ def format_uptime(uptime_seconds: int) -> str:
 
 This follows APoSD's advice to push complexity downward into the module that owns the data, while exposing a simpler interface upward. The dataclass now holds a value that can be used, tested, or formatted in multiple ways.
 
-## 4. Caching the Permission Check (Ch. 7: *Pulling Complexity Downward*)
+## 4. Caching the Permission Check (Ch. 2 Symptom Reduction + Ch. 7 Encapsulation)
 
-> *"Pull complexity downward... If the alternative is to raise an exception, it is almost always better to handle it internally."*
+Commit: [de8339a](https://github.com/marknorgren/about-this-mac/commit/de8339a995f2396a088769f298e27fd6d10eb950)
+
+This change removes change amplification and redundant work by eliminating a duplicate `system_profiler` call.  
+The optimization stays inside `MacInfoGatherer`, so callers keep the same interface.
 
 ### Before
 
@@ -139,6 +179,8 @@ def get_hardware_info(self) -> HardwareInfo:
 The complexity of "run once, use twice" is now entirely inside the class. Callers see no difference.
 
 ## 5. Decoupling Raw Commands from the Gatherer (Ch. 5: *Information Leakage*)
+
+Commit: [1af310a](https://github.com/marknorgren/about-this-mac/commit/1af310a8d067e4e9c16aff44e5408cb0c52cd830)
 
 > *"Information leakage occurs when the same knowledge is used in multiple places. Any time you see information repeated across modules, ask yourself how to reorganize so it lives in just one place."*
 
@@ -183,6 +225,8 @@ The gatherer's two pass-through methods were deleted entirely. APoSD calls these
 
 ## 6. Specific Exception Types (Ch. 10: *Define Errors Out of Existence*)
 
+Commit: [eb09928](https://github.com/marknorgren/about-this-mac/commit/eb09928237c0248427f455468a46267de277ed63)
+
 > *"The best way to reduce the complexity damage from exception handling is to reduce the number of places where exceptions have to be handled."*
 
 ### Before
@@ -224,9 +268,12 @@ except (json.JSONDecodeError, KeyError, IndexError) as exc:
 
 APoSD goes further and advises designing errors *out of existence* where possible — the `Optional[int]` uptime sentinel (returning `None` instead of raising) is an example of this.
 
+Note: one `except OSError` in battery collection is defensive and may not trigger in current command-wrapper behavior.
+
 ## 7. Verifying the Refactoring Didn't Break Anything
 
-All 44 tests pass and the linter scores 10.00/10 after every change — a prerequisite for calling any refactoring safe.
+At the time of this refactor (2026-03-05), tests and lint both passed.  
+These commands and outputs are a snapshot from that run:
 
 ```bash
 uv run pytest -q tests/ 2>&1 | grep -oE '[0-9]+ passed'
