@@ -128,12 +128,9 @@ class BatteryInfoGatherer:
 
             # Check if low power mode is enabled
             low_power_mode = False
-            try:
-                power_mode = self._run_command(["pmset", "-g"])
+            power_mode = self._run_command(["pmset", "-g"])
+            if power_mode:
                 low_power_mode = "lowpowermode 1" in power_mode.lower()
-            except OSError:
-                # pmset may not be available; default to low power mode off.
-                pass
 
             # Ensure we have non-None values for required fields
             current_capacity_val = current_capacity if current_capacity is not None else 0

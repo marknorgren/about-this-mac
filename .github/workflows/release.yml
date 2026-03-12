@@ -40,7 +40,19 @@ jobs:
           TAG="${{ github.ref_name }}"
           VERSION="${TAG#v}"
           # Extract the section for this version from CHANGELOG.md
-          NOTES=$(awk "/^## \[${VERSION}\]/{found=1; next} found && /^## \[/{exit} found{print}" CHANGELOG.md)
+          NOTES=$(awk -v ver="$VERSION" '
+            /^## \[/ {
+              match($0, /^\#\# \[([^]]+)\]/, matches)
+              if (matches[1] == ver) {
+                found = 1
+                next
+              }
+              if (found) {
+                exit
+              }
+            }
+            found { print }
+          ' CHANGELOG.md)
           # Write to a temp file to preserve newlines
           echo "$NOTES" > /tmp/release_notes.md
           echo "notes_file=/tmp/release_notes.md" >> "$GITHUB_OUTPUT"

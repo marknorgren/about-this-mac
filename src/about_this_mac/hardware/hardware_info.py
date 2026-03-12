@@ -455,13 +455,19 @@ class MacInfoGatherer:
         # Get Bluetooth information
         bluetooth_chipset, bluetooth_firmware, bluetooth_transport = self._get_bluetooth_info()
 
-        # Get model metadata
-        _, model_size, model_year = self._get_model_info()
+        # Get model metadata once so release-date probing is not duplicated.
         release_date, _, _ = self._get_release_date()
+        model_name, model_size, model_year = self._get_model_info(
+            hw_data,
+            release_date=release_date,
+        )
+        device_identifier = self._get_sysctl_value("hw.model")
+        if device_identifier == "Unknown":
+            device_identifier = hw_data.get("machine_name", "Unknown")
 
         return HardwareInfo(
-            model_name=hw_data.get("machine_model", "Unknown"),
-            device_identifier=hw_data.get("machine_name", "Unknown"),
+            model_name=model_name,
+            device_identifier=device_identifier,
             model_number=hw_data.get("model_number", "Unknown"),
             serial_number=hw_data.get("serial_number", "Unknown"),
             processor=chip_name,
@@ -495,7 +501,7 @@ class MacInfoGatherer:
                 # Extract timestamp from format like "{ sec = 1234567890, usec = 0 }"
                 boot_timestamp = int(boot_time.split()[3].rstrip(","))
                 return int(time.time()) - boot_timestamp
-        except (ValueError, IndexError, OSError):
+        except (ValueError, IndexError):
             # Uptime is best-effort; return None when kern.boottime is unparseable.
             pass
         return None
@@ -632,14 +638,35 @@ class MacInfoGatherer:
             logger.debug(f"Error getting release date: {e}")
         return "", "", ""
 
-    def _get_model_info(self) -> Tuple[str, str, str]:
+    def _get_model_info(
+        self,
+        hw_data: Optional[Dict[str, Any]] = None,
+        release_date: str = "",
+    ) -> Tuple[str, str, str]:
         # pylint: disable=too-many-nested-blocks
         """Get model name, size and year from system information."""
+        model_name = ""
         model_size = ""
         model_year = ""
+        marketing_name = ""
+
+        if hw_data:
+            model_name = str(hw_data.get("machine_model", "")).strip()
+            marketing_name = str(hw_data.get("machine_name", "")).strip()
+
+        if marketing_name:
+            base_name = marketing_name.split("(", maxsplit=1)[0].strip()
+            model_size_match = re.search(r"\((\d+)-inch", marketing_name)
+            year_match = re.search(r"(\d{4})\)", marketing_name)
+            if base_name:
+                model_name = base_name
+            if model_size_match:
+                model_size = f"{model_size_match.group(1)}-inch"
+            if year_match:
+                model_year = year_match.group(1)
 
         # Try to get marketing name from ioreg for Apple Silicon
-        if platform.processor() == "arm":
+        if platform.processor() == "arm" and not marketing_name:
             try:
                 ioreg_cmd = ["/usr/sbin/ioreg", "-ar", "-k", "product-name"]
                 ioreg_output = self._run_command(ioreg_cmd, privileged=False)
@@ -656,6 +683,7 @@ class MacInfoGatherer:
 
                     if marketing_name:
                         # Parse the marketing name which is in format "MacBook Pro (14-inch, 2023)"
+                        model_name = marketing_name.split("(", maxsplit=1)[0].strip() or model_name
                         model_size_match = re.search(r"\((\d+)-inch", marketing_name)
                         year_match = re.search(r"(\d{4})\)", marketing_name)
 
@@ -692,8 +720,6 @@ class MacInfoGatherer:
                 except (json.JSONDecodeError, KeyError):
                     pass
 
-        # Try to get the release date first
-        release_date, _raw_value, _key_used = self._get_release_date()
         if release_date:
             # Extract year from release date (e.g., "Mar 2024" -> "2024")
             year_match = re.search(r"20\d{2}", release_date)
@@ -732,9 +758,11 @@ class MacInfoGatherer:
                     model_year = "2020"
 
         # Set defaults if we still don't have values
+        if not model_name:
+            model_name = "Mac"
         if not model_size:
             model_size = "Unknown"
         if not model_year:
             model_year = "Unknown"
 
-        return "MacBook Pro", model_size, model_year
+        return model_name, model_size, model_year

@@ -1,6 +1,7 @@
 """Formatting utilities for about-this-mac."""
 
 import json
+import re
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Union
 
@@ -82,9 +83,46 @@ def _format_uptime_field(value: Any) -> str:
     """
     if value is None:
         return UNKNOWN_VALUE
+    if isinstance(value, bool):
+        return UNKNOWN_VALUE
     if isinstance(value, int):
         return format_uptime(value)
     return _stringify(value)
+
+
+def _looks_like_model_identifier(value: str) -> bool:
+    """Return True when a value looks like a technical Mac identifier."""
+    return bool(re.fullmatch(r"[A-Za-z][A-Za-z0-9]*\d{1,2},\d+", value))
+
+
+def _device_display_name(hw: Dict[str, Any]) -> str:
+    """Return the best user-facing device name available."""
+    model_name = _stringify(hw.get("model_name"), default="")
+    if model_name:
+        return model_name
+
+    device_identifier = _stringify(hw.get("device_identifier"), default="")
+    if device_identifier not in {"arm64", "x86_64", "amd64", "aarch64", "i386"}:
+        if device_identifier and not _looks_like_model_identifier(device_identifier):
+            return device_identifier
+
+    return "Mac"
+
+
+def _public_device_name(device_name: str) -> str:
+    """Return the model label used in public listing output."""
+    if device_name == "MacBook Pro":
+        return "MacBook Pro Retina"
+    return device_name
+
+
+def _coerce_positive_int(value: Any) -> int:
+    """Coerce a value to a positive integer, or 0 when not possible."""
+    try:
+        int_value = int(value)
+    except (TypeError, ValueError):
+        return 0
+    return int_value if int_value > 0 else 0
 
 
 def format_size(size_bytes: Union[int, float]) -> str:
@@ -535,7 +573,7 @@ def format_output_as_simple(data: Dict[str, Any]) -> str:
     macos_version = _macos_version_name(_stringify(hw.get("macos_version")))
     chip_name = _clean_chip_name(hw)
 
-    device_name = _stringify(hw.get("device_identifier"), default="Mac")
+    device_name = _device_display_name(hw)
 
     return "\n".join(
         [
@@ -567,13 +605,23 @@ def format_output_as_public(data: Dict[str, Any]) -> str:
     model_size = _stringify(hw.get("model_size"), default="Unknown")
     model_year = _stringify(hw.get("model_year"), default="Unknown")
     release_date = _stringify(hw.get("release_date"), default="")
+    device_name = _device_display_name(hw)
 
     processor = _stringify(hw.get("processor"), default="").replace(":", "").strip()
     is_apple_silicon = any(f"M{i}" in processor for i in range(1, 10))
     if is_apple_silicon:
-        gpu_cores_val = hw.get("gpu_cores", 0)
-        gpu_label = f"{gpu_cores_val}-Core GPU" if gpu_cores_val and gpu_cores_val > 0 else ""
-        processor = f"{processor} {hw.get('cpu_cores', '')}-Core ({model_year}) {gpu_label}".strip()
+        gpu_cores_val = _coerce_positive_int(hw.get("gpu_cores"))
+        gpu_label = f"{gpu_cores_val}-Core GPU" if gpu_cores_val > 0 else ""
+        cpu_cores_val = _coerce_positive_int(hw.get("cpu_cores"))
+        cpu_cores_label = f"{cpu_cores_val}-Core" if cpu_cores_val > 0 else ""
+        processor_parts = [processor]
+        if cpu_cores_label:
+            processor_parts.append(cpu_cores_label)
+        if model_year != UNKNOWN_VALUE:
+            processor_parts.append(f"({model_year})")
+        if gpu_label:
+            processor_parts.append(gpu_label)
+        processor = " ".join(processor_parts)
 
     storage = _coerce_dict(hw.get("storage"))
     storage_size = _stringify(storage.get("size"), default="Unknown")
@@ -589,15 +637,13 @@ def format_output_as_public(data: Dict[str, Any]) -> str:
     memory = _coerce_dict(hw.get("memory"))
     memory_display = _stringify(memory.get("total")).replace("GB", " GB")
 
-    device_name = _stringify(hw.get("device_identifier"), default="Mac")
-
     return "\n".join(
         [
             "# Device",
             device_name,
             "",
             "# Model",
-            f"{model_size} MacBook Pro Retina",
+            f"{model_size} {_public_device_name(device_name)}",
             "",
             "# Release Date",
             release_date if release_date else f"Released in {model_year}",
