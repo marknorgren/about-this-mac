@@ -455,12 +455,7 @@ class MacInfoGatherer:
         # Get Bluetooth information
         bluetooth_chipset, bluetooth_firmware, bluetooth_transport = self._get_bluetooth_info()
 
-        # Get model metadata once so release-date probing is not duplicated.
-        release_date, _, _ = self._get_release_date()
-        model_name, model_size, model_year = self._get_model_info(
-            hw_data,
-            release_date=release_date,
-        )
+        model_name, model_size, model_year, release_date = self._get_model_metadata(hw_data)
         device_identifier = self._get_sysctl_value("hw.model")
         if device_identifier == "Unknown":
             device_identifier = hw_data.get("machine_name", "Unknown")
@@ -492,6 +487,15 @@ class MacInfoGatherer:
     # Public wrapper for release date helper
     def get_release_date(self) -> Tuple[str, str, str]:
         return self._get_release_date()
+
+    def _get_model_metadata(self, hw_data: Dict[str, Any]) -> Tuple[str, str, str, str]:
+        """Return model metadata while only probing release date once."""
+        release_date, _, _ = self._get_release_date()
+        model_name, model_size, model_year = self._get_model_info(
+            hw_data,
+            release_date=release_date,
+        )
+        return model_name, model_size, model_year, release_date
 
     def _get_uptime(self) -> Optional[int]:
         """Get system uptime in seconds. Returns None if unknown."""

@@ -83,10 +83,10 @@ def _format_uptime_field(value: Any) -> str:
     """
     if value is None:
         return UNKNOWN_VALUE
+    if isinstance(value, int) and not isinstance(value, bool):
+        return format_uptime(value)
     if isinstance(value, bool):
         return UNKNOWN_VALUE
-    if isinstance(value, int):
-        return format_uptime(value)
     return _stringify(value)
 
 
@@ -123,6 +123,20 @@ def _coerce_positive_int(value: Any) -> int:
     except (TypeError, ValueError):
         return 0
     return int_value if int_value > 0 else 0
+
+
+def _normalize_storage_size(storage_size: str) -> str:
+    """Normalize storage strings while preserving already-formatted values."""
+    if "TB" in storage_size or "GB" not in storage_size:
+        return storage_size
+
+    numeric = storage_size.replace("GB", "").strip()
+    try:
+        val = int(numeric)
+    except ValueError:
+        # Keep the original string when the numeric portion is not parseable.
+        return storage_size
+    return f"{val // 1024} TB" if val >= 1024 else f"{val} GB"
 
 
 def format_size(size_bytes: Union[int, float]) -> str:
@@ -624,15 +638,7 @@ def format_output_as_public(data: Dict[str, Any]) -> str:
         processor = " ".join(processor_parts)
 
     storage = _coerce_dict(hw.get("storage"))
-    storage_size = _stringify(storage.get("size"), default="Unknown")
-    if "TB" not in storage_size and "GB" in storage_size:
-        numeric = storage_size.replace("GB", "").strip()
-        try:
-            val = int(numeric)
-            storage_size = f"{val // 1024} TB" if val >= 1024 else f"{val} GB"
-        except ValueError:
-            # Keep original storage_size string when it can't be parsed as an integer.
-            pass
+    storage_size = _normalize_storage_size(_stringify(storage.get("size"), default="Unknown"))
 
     memory = _coerce_dict(hw.get("memory"))
     memory_display = _stringify(memory.get("total")).replace("GB", " GB")
