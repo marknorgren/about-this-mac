@@ -1,5 +1,24 @@
 # CLAUDE
 
+## Cloud agent environment
+
+This repo provides a **devcontainer** (`.devcontainer/`) with **uv** and **just** preinstalled and on PATH. Use it in Cursor, GitHub Codespaces, or any devcontainer host so CI-parity commands work without bootstrapping.
+
+If you're not in the devcontainer and `uv` or `just` are missing, bootstrap once (same as CI):
+
+```sh
+# uv
+curl -LsSf https://astral.sh/uv/install.sh | sh
+export PATH="$HOME/.local/bin:$PATH"   # or add to your shell profile
+
+# just (macOS with Homebrew)
+brew install just
+# Linux (script)
+curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- --to /usr/local/bin
+```
+
+Then run the CI-parity checks below.
+
 ## CI parity checks (required before push/PR)
 
 Run **all** checks CI runs, in this order:

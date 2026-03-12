@@ -1,5 +1,14 @@
 # AGENTS
 
+## Cloud agent environment
+
+Use the **devcontainer** (`.devcontainer/`) so **uv** and **just** are preinstalled and on PATH. If not using the devcontainer, bootstrap once:
+
+```sh
+curl -LsSf https://astral.sh/uv/install.sh | sh && export PATH="$HOME/.local/bin:$PATH"
+brew install just   # macOS; on Linux use: curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- --to /usr/local/bin
+```
+
 ## Private push guardrails (Entire)
 
 This repo uses a private mirror remote to keep Entire/session branch data off public remotes.

@@ -117,6 +117,8 @@ uv sync --extra dev
 uv run about-this-mac
 ```
 
+**Dev container:** Open the repo in a devcontainer (e.g. Cursor, GitHub Codespaces) for a preconfigured environment with **uv** and **just** on PATH. See `.devcontainer/`.
+
 ### Installation Methods Compared
 
 | Method | Isolated | Global CLI | Best For |
