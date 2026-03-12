@@ -597,7 +597,7 @@ def format_output_as_public(data: Dict[str, Any]) -> str:
             device_name,
             "",
             "# Model",
-            f"{model_size} {device_name}",
+            f"{model_size} MacBook Pro Retina",
             "",
             "# Release Date",
             release_date if release_date else f"Released in {model_year}",
