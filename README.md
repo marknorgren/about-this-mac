@@ -68,7 +68,7 @@ The script uses various macOS system commands to gather information:
 ## Requirements
 
 - macOS 11.0 (Big Sur) or later
-- Python 3.8 or later
+- Python 3.10 or later
 - PyYAML package (installed automatically)
 
 ## Installation

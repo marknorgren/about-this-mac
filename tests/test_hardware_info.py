@@ -103,3 +103,71 @@ def test_get_hardware_info_uses_single_release_date_lookup(
             "serial_number": "SER123",
         }
     )
+
+
+def test_get_hardware_info_handles_unknown_sysctl_values(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Unknown sysctl values should not crash fallback hardware collection."""
+    gatherer = object.__new__(MacInfoGatherer)
+    gatherer._battery = MagicMock()
+    gatherer._cached_hw_json = ""
+    gatherer.has_full_permissions = False
+
+    monkeypatch.setattr("about_this_mac.hardware.hardware_info.platform.machine", lambda: "x86_64")
+    monkeypatch.setattr(
+        "about_this_mac.hardware.hardware_info.platform.mac_ver", lambda: ("14.4", "", "")
+    )
+    monkeypatch.setattr("about_this_mac.hardware.hardware_info.platform.processor", lambda: "i386")
+    monkeypatch.setattr(gatherer, "_run_command", MagicMock(return_value=""))
+    monkeypatch.setattr(gatherer, "_get_sysctl_value", MagicMock(return_value="Unknown"))
+    monkeypatch.setattr(
+        gatherer,
+        "_get_memory_info",
+        MagicMock(
+            return_value=MemoryInfo(
+                total="Unknown",
+                type="Unknown",
+                speed="Unknown",
+                manufacturer="Unknown",
+                ecc=False,
+            )
+        ),
+    )
+    monkeypatch.setattr(
+        gatherer,
+        "_get_storage_info",
+        MagicMock(
+            return_value=StorageInfo(
+                name="Unknown",
+                model="Unknown",
+                revision="Unknown",
+                serial="Unknown",
+                size="Unknown",
+                type="Unknown",
+                protocol="Unknown",
+                trim=False,
+                smart_status="Unknown",
+                removable=False,
+                internal=False,
+            )
+        ),
+    )
+    monkeypatch.setattr(gatherer, "_get_graphics_info", MagicMock(return_value=[]))
+    monkeypatch.setattr(
+        gatherer, "_get_bluetooth_info", MagicMock(return_value=("Unknown", "Unknown", "Unknown"))
+    )
+    monkeypatch.setattr(gatherer, "_get_uptime", MagicMock(return_value=None))
+    monkeypatch.setattr(
+        gatherer,
+        "_get_model_metadata",
+        MagicMock(return_value=("Mac", "", "", "Unknown")),
+    )
+
+    info = gatherer.get_hardware_info()
+
+    assert info.processor == "Unknown"
+    assert info.cpu_cores == 0
+    assert info.performance_cores == 0
+    assert info.efficiency_cores == 0
+    assert info.device_identifier == "x86_64"
