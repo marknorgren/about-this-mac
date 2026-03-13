@@ -18,6 +18,7 @@ dev = [
     "pylint>=2.17.5",
     "mypy>=1.5.1",
     "types-PyYAML>=6.0.12",
+    "python-semantic-release>=9.0.0",
 ]
 
 [project.scripts]
@@ -71,6 +72,23 @@ max-public-methods = 20
 max-returns = 6
 max-statements = 50
 min-public-methods = 1
+
+[tool.semantic_release]
+version_toml = ["pyproject.toml:project.version"]
+version_variables = []
+branch = "main"
+changelog_file = "CHANGELOG.md"
+build_command = "uv build"
+dist_path = "dist/"
+upload_to_repository = false
+upload_to_release = false
+commit_version_number = true
+tag_format = "v{version}"
+
+[tool.semantic_release.commit_parser_options]
+allowed_tags = ["feat", "fix", "perf", "refactor", "style", "test", "docs", "build", "ci", "chore"]
+minor_tags = ["feat"]
+patch_tags = ["fix", "perf"]
 
 [tool.mypy]
 python_version = "3.8"

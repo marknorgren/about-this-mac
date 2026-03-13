@@ -11,6 +11,8 @@ from about_this_mac.output import Output
 from about_this_mac.utils.formatting import (
     format_output_as_json,
     format_output_as_markdown,
+    format_output_as_public,
+    format_output_as_simple,
     format_output_as_text,
     format_output_as_yaml,
 )
@@ -42,14 +44,13 @@ def _should_use_color(
 def _format_output(
     data: Dict[str, Any],
     format_type: str,
-    gatherer: MacInfoGatherer,
     use_color: bool = False,
 ) -> str:
     """Format the output according to the specified format."""
     if format_type == "simple":
-        return gatherer.format_simple_output(data)
+        return format_output_as_simple(data)
     elif format_type == "public":
-        return gatherer.format_public_output(data)
+        return format_output_as_public(data)
     elif format_type == "json":
         return format_output_as_json(data)
     elif format_type == "yaml":
@@ -73,7 +74,7 @@ def run_report(args: Namespace, gatherer: MacInfoGatherer, output: Output) -> No
             data["battery"] = asdict(battery_info)
 
     use_color = _should_use_color(args.format, args.output, args.color, args.no_color)
-    formatted = _format_output(data, args.format, gatherer, use_color=use_color)
+    formatted = _format_output(data, args.format, use_color=use_color)
 
     if args.output and args.output != "-":
         with open(args.output, "w", encoding="utf-8") as f:

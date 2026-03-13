@@ -1,6 +1,7 @@
 """Formatting utilities for about-this-mac."""
 
 import json
+import re
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Union
 
@@ -72,6 +73,70 @@ def _section_style(index: int) -> str:
     else:
         color = APPLE_RAINBOW[-1]
     return f"{ANSI_BOLD}{color}"
+
+
+def _format_uptime_field(value: Any) -> str:
+    """Format an uptime field that may be int seconds or a pre-formatted string.
+
+    Accepts Any because this field is read from a plain dict (e.g. after JSON
+    serialisation), where the Optional[int] type from HardwareInfo is not preserved.
+    """
+    if value is None:
+        return UNKNOWN_VALUE
+    if isinstance(value, int) and not isinstance(value, bool):
+        return format_uptime(value)
+    if isinstance(value, bool):
+        return UNKNOWN_VALUE
+    return _stringify(value)
+
+
+def _looks_like_model_identifier(value: str) -> bool:
+    """Return True when a value looks like a technical Mac identifier."""
+    return bool(re.fullmatch(r"[A-Za-z][A-Za-z0-9]*\d{1,2},\d+", value))
+
+
+def _device_display_name(hw: Dict[str, Any]) -> str:
+    """Return the best user-facing device name available."""
+    model_name = _stringify(hw.get("model_name"), default="")
+    if model_name:
+        return model_name
+
+    device_identifier = _stringify(hw.get("device_identifier"), default="")
+    if device_identifier not in {"arm64", "x86_64", "amd64", "aarch64", "i386"}:
+        if device_identifier and not _looks_like_model_identifier(device_identifier):
+            return device_identifier
+
+    return "Mac"
+
+
+def _public_device_name(device_name: str) -> str:
+    """Return the model label used in public listing output."""
+    if device_name == "MacBook Pro":
+        return "MacBook Pro Retina"
+    return device_name
+
+
+def _coerce_positive_int(value: Any) -> int:
+    """Coerce a value to a positive integer, or 0 when not possible."""
+    try:
+        int_value = int(value)
+    except (TypeError, ValueError):
+        return 0
+    return int_value if int_value > 0 else 0
+
+
+def _normalize_storage_size(storage_size: str) -> str:
+    """Normalize storage strings while preserving already-formatted values."""
+    if "TB" in storage_size or "GB" not in storage_size:
+        return storage_size
+
+    numeric = storage_size.replace("GB", "").strip()
+    try:
+        val = int(numeric)
+    except ValueError:
+        # Keep the original string when the numeric portion is not parseable.
+        return storage_size
+    return f"{val // 1024} TB" if val >= 1024 else f"{val} GB"
 
 
 def format_size(size_bytes: Union[int, float]) -> str:
@@ -265,7 +330,7 @@ def format_output_as_markdown(data: Dict[str, Any]) -> str:
                 "### System Software",
                 f"- **macOS Version:** {_stringify(hw.get('macos_version'))}",
                 f"- **Build:** {_stringify(hw.get('macos_build'))}",
-                f"- **Uptime:** {_stringify(hw.get('uptime'))}",
+                f"- **Uptime:** {_format_uptime_field(hw.get('uptime'))}",
             ]
         )
 
@@ -427,7 +492,7 @@ def format_output_as_text(data: Dict[str, Any], use_color: bool = False) -> str:
             [
                 f"macOS Version: {_stringify(hw.get('macos_version'))}",
                 f"Build: {_stringify(hw.get('macos_build'))}",
-                f"Uptime: {_stringify(hw.get('uptime'))}",
+                f"Uptime: {_format_uptime_field(hw.get('uptime'))}",
             ]
         )
 
@@ -465,3 +530,137 @@ def format_output_as_text(data: Dict[str, Any], use_color: bool = False) -> str:
         )
 
     return "\n".join(output)
+
+
+def _macos_version_name(version: str) -> str:
+    """Prepend the macOS marketing name to a version string."""
+    prefixes = [
+        ("15", "Sequoia"),
+        ("14", "Sonoma"),
+        ("13", "Ventura"),
+        ("12", "Monterey"),
+        ("11", "Big Sur"),
+    ]
+    for prefix, name in prefixes:
+        if version.startswith(prefix):
+            return f"{name} {version}"
+    return version
+
+
+def _clean_chip_name(hw: Dict[str, Any]) -> str:
+    """Extract a clean processor name from hardware data."""
+    chip_name = _stringify(hw.get("processor"), default="").replace(":", "").strip()
+    if chip_name:
+        return chip_name
+    graphics = str(hw.get("graphics", ""))
+    for i in range(1, 5):
+        if f"M{i}" in graphics:
+            for variant in ("", "Pro", "Max", "Ultra"):
+                variant_name = f"M{i} {variant}".strip()
+                if variant_name in graphics:
+                    return f"Apple {variant_name}"
+    return UNKNOWN_VALUE
+
+
+def format_output_as_simple(data: Dict[str, Any]) -> str:
+    """Format data to match the macOS About This Mac summary.
+
+    Args:
+        data: Data dictionary containing a 'hardware' key.
+
+    Returns:
+        Formatted string resembling the macOS About This Mac panel.
+    """
+    if "hardware" not in data:
+        return "No hardware information available"
+
+    hw = _coerce_dict(data.get("hardware"))
+    model_size = _stringify(hw.get("model_size"), default="")
+    release_date = _stringify(hw.get("release_date"), default="")
+
+    size_date = f"{model_size}, {release_date}" if release_date else model_size
+
+    memory = _coerce_dict(hw.get("memory"))
+    memory_size = _stringify(memory.get("total")).replace("GB", " GB")
+    storage_name = "Macintosh HD"
+
+    macos_version = _macos_version_name(_stringify(hw.get("macos_version")))
+    chip_name = _clean_chip_name(hw)
+
+    device_name = _device_display_name(hw)
+
+    return "\n".join(
+        [
+            device_name,
+            size_date,
+            "",
+            f"Chip          {chip_name}",
+            f"Memory        {memory_size}",
+            f"Startup disk  {storage_name}",
+            f"Serial number {_stringify(hw.get('serial_number'))}",
+            f"macOS         {macos_version}",
+        ]
+    )
+
+
+def format_output_as_public(data: Dict[str, Any]) -> str:
+    """Format data in a public-friendly way suitable for sales listings.
+
+    Args:
+        data: Data dictionary containing a 'hardware' key.
+
+    Returns:
+        Formatted string with device specs for resale/listing use.
+    """
+    if "hardware" not in data:
+        return "No hardware information available"
+
+    hw = _coerce_dict(data.get("hardware"))
+    model_size = _stringify(hw.get("model_size"), default="Unknown")
+    model_year = _stringify(hw.get("model_year"), default="Unknown")
+    release_date = _stringify(hw.get("release_date"), default="")
+    device_name = _device_display_name(hw)
+
+    processor = _stringify(hw.get("processor"), default="").replace(":", "").strip()
+    is_apple_silicon = any(f"M{i}" in processor for i in range(1, 10))
+    if is_apple_silicon:
+        gpu_cores_val = _coerce_positive_int(hw.get("gpu_cores"))
+        gpu_label = f"{gpu_cores_val}-Core GPU" if gpu_cores_val > 0 else ""
+        cpu_cores_val = _coerce_positive_int(hw.get("cpu_cores"))
+        cpu_cores_label = f"{cpu_cores_val}-Core" if cpu_cores_val > 0 else ""
+        processor_parts = [processor]
+        if cpu_cores_label:
+            processor_parts.append(cpu_cores_label)
+        if model_year != UNKNOWN_VALUE:
+            processor_parts.append(f"({model_year})")
+        if gpu_label:
+            processor_parts.append(gpu_label)
+        processor = " ".join(processor_parts)
+
+    storage = _coerce_dict(hw.get("storage"))
+    storage_size = _normalize_storage_size(_stringify(storage.get("size"), default="Unknown"))
+
+    memory = _coerce_dict(hw.get("memory"))
+    memory_display = _stringify(memory.get("total")).replace("GB", " GB")
+
+    return "\n".join(
+        [
+            "# Device",
+            device_name,
+            "",
+            "# Model",
+            f"{model_size} {_public_device_name(device_name)}",
+            "",
+            "# Release Date",
+            release_date if release_date else f"Released in {model_year}",
+            "",
+            "# Processor",
+            processor,
+            "",
+            "# Hard Drive",
+            f"{storage_size} SSD",
+            "",
+            "# Memory",
+            memory_display,
+        ]
+    )

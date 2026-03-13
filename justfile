@@ -105,6 +105,15 @@ yaml:
 verbose:
     uv run python src/about_this_mac/cli.py --verbose
 
+# Bump version, update CHANGELOG.md, commit, tag, and push
+release:
+    uv run semantic-release version
+    git push --follow-tags
+
+# Dry run: print what the next version would be without making changes
+release-dry-run:
+    uv run semantic-release version --print
+
 # Clean generated files
 clean:
     rm -f mac-info-*.md

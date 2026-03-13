@@ -7,9 +7,9 @@ import subprocess
 import re
 import time
 from dataclasses import dataclass
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any, Optional, Tuple
 
-from about_this_mac.battery import BatteryInfoGatherer
+from about_this_mac.battery import BatteryInfo, BatteryInfoGatherer
 from about_this_mac.utils.command import run_command_result
 
 logger = logging.getLogger(__name__)
@@ -64,15 +64,19 @@ class HardwareInfo:
     bluetooth_transport: str
     macos_version: str
     macos_build: str
-    uptime: str
+    uptime: Optional[int]  # seconds since boot, None if unknown
+    release_date: str
+    model_size: str
+    model_year: str
 
 
-class MacInfoGatherer(BatteryInfoGatherer):
+class MacInfoGatherer:
     """Class for gathering Mac hardware information."""
 
     def __init__(self, verbose: bool = False) -> None:
         """Initialize the gatherer."""
-        super().__init__()
+        self._battery = BatteryInfoGatherer()
+        self._cached_hw_json = ""
         if verbose:
             logger.setLevel(logging.DEBUG)
 
@@ -87,14 +91,22 @@ class MacInfoGatherer(BatteryInfoGatherer):
             )
 
     def _check_permissions(self) -> bool:
-        """Check if script has necessary permissions."""
+        """Check if script has necessary permissions.
+
+        Caches the SPHardwareDataType output so get_hardware_info() can
+        reuse it without a second subprocess call.
+        """
         try:
-            # Try to access a privileged command
-            subprocess.run(
-                ["system_profiler", "SPHardwareDataType", "-json"], capture_output=True, check=True
+            result = subprocess.run(
+                ["system_profiler", "SPHardwareDataType", "-json"],
+                capture_output=True,
+                text=True,
+                check=True,
             )
+            self._cached_hw_json = result.stdout.strip()
             return True
-        except subprocess.CalledProcessError:
+        except (subprocess.CalledProcessError, FileNotFoundError, OSError):
+            self._cached_hw_json = ""
             return False
 
     def _run_command(self, command: List[str], privileged: bool = False) -> str:
@@ -111,14 +123,9 @@ class MacInfoGatherer(BatteryInfoGatherer):
             logger.debug("Command stderr: %s", result.stderr)
         return ""
 
-    # Public helpers for raw data access
-    def run_command(self, command: List[str], privileged: bool = False) -> str:
-        """Public wrapper to run commands with optional privilege gating."""
-        return self._run_command(command, privileged=privileged)
-
-    def get_sysctl_value(self, key: str) -> str:
-        """Public wrapper for sysctl value retrieval."""
-        return self._get_sysctl_value(key)
+    def get_battery_info(self) -> Optional[BatteryInfo]:
+        """Gather battery information by delegating to BatteryInfoGatherer."""
+        return self._battery.get_battery_info()
 
     def _get_sysctl_value(self, key: str) -> str:
         """Get system information using sysctl."""
@@ -389,16 +396,18 @@ class MacInfoGatherer(BatteryInfoGatherer):
                     controller.get("controller_firmwareVersion", "Unknown"),
                     controller.get("controller_transport", "Unknown"),
                 )
-        except:
-            pass
+        except (json.JSONDecodeError, KeyError, IndexError) as exc:
+            logger.debug("Failed to parse Bluetooth information: %s", exc)
         return ("Unknown", "Unknown", "Unknown")
 
     def get_hardware_info(self) -> HardwareInfo:
         """Gather hardware information using system_profiler and sysctl."""
-        # Get basic hardware info
-        hw_info = self._run_command(
+        # Reuse the output cached during _check_permissions() to avoid a
+        # second subprocess call for the same data.
+        hw_info = self._cached_hw_json or self._run_command(
             ["system_profiler", "SPHardwareDataType", "-json"], privileged=True
         )
+        self._cached_hw_json = ""  # allow GC
 
         if hw_info:
             hw_data = json.loads(hw_info).get("SPHardwareDataType", [{}])[0]
@@ -446,9 +455,14 @@ class MacInfoGatherer(BatteryInfoGatherer):
         # Get Bluetooth information
         bluetooth_chipset, bluetooth_firmware, bluetooth_transport = self._get_bluetooth_info()
 
+        model_name, model_size, model_year, release_date = self._get_model_metadata(hw_data)
+        device_identifier = self._get_sysctl_value("hw.model")
+        if device_identifier == "Unknown":
+            device_identifier = hw_data.get("machine_name", "Unknown")
+
         return HardwareInfo(
-            model_name=hw_data.get("machine_model", "Unknown"),
-            device_identifier=hw_data.get("machine_name", "Unknown"),
+            model_name=model_name,
+            device_identifier=device_identifier,
             model_number=hw_data.get("model_number", "Unknown"),
             serial_number=hw_data.get("serial_number", "Unknown"),
             processor=chip_name,
@@ -465,41 +479,36 @@ class MacInfoGatherer(BatteryInfoGatherer):
             macos_version=macos_version,
             macos_build=macos_build,
             uptime=self._get_uptime(),
+            release_date=release_date,
+            model_size=model_size,
+            model_year=model_year,
         )
 
     # Public wrapper for release date helper
     def get_release_date(self) -> Tuple[str, str, str]:
         return self._get_release_date()
 
-    def _get_uptime(self) -> str:
-        """Get system uptime in a human-readable format."""
+    def _get_model_metadata(self, hw_data: Dict[str, Any]) -> Tuple[str, str, str, str]:
+        """Return model metadata while only probing release date once."""
+        release_date, _, _ = self._get_release_date()
+        model_name, model_size, model_year = self._get_model_info(
+            hw_data,
+            release_date=release_date,
+        )
+        return model_name, model_size, model_year, release_date
+
+    def _get_uptime(self) -> Optional[int]:
+        """Get system uptime in seconds. Returns None if unknown."""
         try:
-            # Get boot time from sysctl
             boot_time = self._run_command(["sysctl", "-n", "kern.boottime"], privileged=False)
             if boot_time:
                 # Extract timestamp from format like "{ sec = 1234567890, usec = 0 }"
                 boot_timestamp = int(boot_time.split()[3].rstrip(","))
-                current_time = int(time.time())
-                uptime_seconds = current_time - boot_timestamp
-
-                days = uptime_seconds // 86400
-                uptime_seconds %= 86400
-                hours = uptime_seconds // 3600
-                uptime_seconds %= 3600
-                minutes = uptime_seconds // 60
-
-                parts = []
-                if days > 0:
-                    parts.append(f"{days} {'day' if days == 1 else 'days'}")
-                if hours > 0:
-                    parts.append(f"{hours} {'hour' if hours == 1 else 'hours'}")
-                if minutes > 0:
-                    parts.append(f"{minutes} {'minute' if minutes == 1 else 'minutes'}")
-
-                return " ".join(parts)
-        except:
+                return int(time.time()) - boot_timestamp
+        except (ValueError, IndexError):
+            # Uptime is best-effort; return None when kern.boottime is unparseable.
             pass
-        return "Unknown"
+        return None
 
     def _get_screen_size(self, resolution: str) -> str:
         """Determine screen size from resolution."""
@@ -633,14 +642,35 @@ class MacInfoGatherer(BatteryInfoGatherer):
             logger.debug(f"Error getting release date: {e}")
         return "", "", ""
 
-    def _get_model_info(self) -> Tuple[str, str, str]:
+    def _get_model_info(
+        self,
+        hw_data: Optional[Dict[str, Any]] = None,
+        release_date: str = "",
+    ) -> Tuple[str, str, str]:
         # pylint: disable=too-many-nested-blocks
         """Get model name, size and year from system information."""
+        model_name = ""
         model_size = ""
         model_year = ""
+        marketing_name = ""
+
+        if hw_data:
+            model_name = str(hw_data.get("machine_model", "")).strip()
+            marketing_name = str(hw_data.get("machine_name", "")).strip()
+
+        if marketing_name:
+            base_name = marketing_name.split("(", maxsplit=1)[0].strip()
+            model_size_match = re.search(r"\((\d+)-inch", marketing_name)
+            year_match = re.search(r"(\d{4})\)", marketing_name)
+            if base_name:
+                model_name = base_name
+            if model_size_match:
+                model_size = f"{model_size_match.group(1)}-inch"
+            if year_match:
+                model_year = year_match.group(1)
 
         # Try to get marketing name from ioreg for Apple Silicon
-        if platform.processor() == "arm":
+        if platform.processor() == "arm" and not marketing_name:
             try:
                 ioreg_cmd = ["/usr/sbin/ioreg", "-ar", "-k", "product-name"]
                 ioreg_output = self._run_command(ioreg_cmd, privileged=False)
@@ -657,6 +687,7 @@ class MacInfoGatherer(BatteryInfoGatherer):
 
                     if marketing_name:
                         # Parse the marketing name which is in format "MacBook Pro (14-inch, 2023)"
+                        model_name = marketing_name.split("(", maxsplit=1)[0].strip() or model_name
                         model_size_match = re.search(r"\((\d+)-inch", marketing_name)
                         year_match = re.search(r"(\d{4})\)", marketing_name)
 
@@ -693,8 +724,6 @@ class MacInfoGatherer(BatteryInfoGatherer):
                 except (json.JSONDecodeError, KeyError):
                     pass
 
-        # Try to get the release date first
-        release_date, _raw_value, _key_used = self._get_release_date()
         if release_date:
             # Extract year from release date (e.g., "Mar 2024" -> "2024")
             year_match = re.search(r"20\d{2}", release_date)
@@ -733,135 +762,11 @@ class MacInfoGatherer(BatteryInfoGatherer):
                     model_year = "2020"
 
         # Set defaults if we still don't have values
+        if not model_name:
+            model_name = "Mac"
         if not model_size:
             model_size = "Unknown"
         if not model_year:
             model_year = "Unknown"
 
-        return "MacBook Pro", model_size, model_year
-
-    def format_simple_output(self, data: Dict[str, Any]) -> str:
-        """Format the output to match the simple About This Mac format."""
-        if "hardware" not in data:
-            return "No hardware information available"
-
-        hw = data["hardware"]
-
-        # Format model name nicely
-        _, model_size, _ = self._get_model_info()  # Don't use the year from here
-
-        # Get the release date
-        release_date, _raw_value, _key_used = self._get_release_date()
-
-        # Construct the full model name
-        model_name = "MacBook Pro"
-
-        # Format the size and date line
-        if release_date:
-            size_date = f"{model_size}, {release_date}"
-        else:
-            size_date = model_size
-
-        # Format memory size
-        memory_size = hw["memory"]["total"].replace("GB", " GB")
-
-        # Get storage name (usually "Macintosh HD" for boot drive)
-        storage_name = "Macintosh HD"  # Use exact name from screenshot
-
-        # Format macOS version (e.g., "Sequoia 15.3" instead of just "15.3")
-        macos_version = hw["macos_version"]
-        if macos_version.startswith("15"):
-            macos_version = f"Sequoia {macos_version}"
-        elif macos_version.startswith("14"):
-            macos_version = f"Sonoma {macos_version}"
-        elif macos_version.startswith("13"):
-            macos_version = f"Ventura {macos_version}"
-        elif macos_version.startswith("12"):
-            macos_version = f"Monterey {macos_version}"
-        elif macos_version.startswith("11"):
-            macos_version = f"Big Sur {macos_version}"
-
-        # Clean up processor name
-        chip_name = hw["processor"].replace(":", "").strip()
-        if not chip_name:
-            # Try to determine from graphics info
-            graphics = str(hw["graphics"])
-            for i in range(1, 5):
-                if f"M{i}" in graphics:
-                    variants = ["", "Pro", "Max", "Ultra"]
-                    for variant in variants:
-                        variant_name = f"M{i} {variant}".strip()
-                        if variant_name in graphics:
-                            chip_name = f"Apple {variant_name}"
-                            break
-                    break
-
-        output = [
-            model_name,
-            size_date,
-            "",
-            f"Chip          {chip_name}",
-            f"Memory        {memory_size}",
-            f"Startup disk  {storage_name}",
-            f"Serial number {hw['serial_number']}",
-            f"macOS         {macos_version}",
-        ]
-
-        return "\n".join(output)
-
-    def format_public_output(self, data: Dict[str, Any]) -> str:
-        """Format the output in a public-friendly way, suitable for sales listings."""
-        if "hardware" not in data:
-            return "No hardware information available"
-
-        hw = data["hardware"]
-
-        # Format model name nicely
-        _, model_size, model_year = self._get_model_info()
-
-        # Get release date
-        release_date, _, _ = self._get_release_date()
-
-        # Clean up processor name
-        processor = hw["processor"].replace(":", "").strip()
-        if "M2" in processor:
-            # Format: "M2 Max 12-Core (Early 2023) 30-Core GPU"
-            gpu_cores = f"{hw['gpu_cores']}-Core GPU" if hw["gpu_cores"] > 0 else ""
-            processor = (
-                f"{processor} {hw['cpu_cores']}-Core (Early {model_year}) {gpu_cores}".strip()
-            )
-
-        # Format storage size
-        storage_size = hw["storage"]["size"]
-        if isinstance(storage_size, str) and "GB" in storage_size:
-            storage_size = storage_size.replace("GB", "").strip()
-            storage_size = (
-                f"{int(storage_size) // 1024} TB"
-                if int(storage_size) >= 1024
-                else f"{storage_size} GB"
-            )
-
-        # Format memory
-        memory = hw["memory"]["total"].replace("GB", " GB")
-
-        output = [
-            "# Device",
-            "MacBook",
-            "",
-            "# Model",
-            f"{model_size} MacBook Pro Retina",
-            "",
-            "# Release Date",
-            release_date if release_date else f"Released in {model_year}",
-            "",
-            "# Processor",
-            processor,
-            "",
-            "# Hard Drive",
-            f"{storage_size} SSD",
-            "",
-            "# Memory",
-            memory,
-        ]
-
-        return "\n".join(output)
+        return model_name, model_size, model_year

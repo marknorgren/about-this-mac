@@ -6,12 +6,14 @@ from typing import Dict, Any
 import yaml
 
 from about_this_mac.utils.formatting import (
-    format_size,
-    format_uptime,
-    format_output_as_yaml,
     format_output_as_json,
     format_output_as_markdown,
+    format_output_as_public,
+    format_output_as_simple,
+    format_output_as_yaml,
     format_bool,
+    format_size,
+    format_uptime,
 )
 
 
@@ -134,7 +136,10 @@ def test_format_output_as_markdown_with_hardware() -> None:
             "bluetooth_transport": "USB",
             "macos_version": "14.0",
             "macos_build": "23A344",
-            "uptime": "2 days 3 hours",
+            "uptime": 183600,
+            "release_date": "Jan 2023",
+            "model_size": "14-inch",
+            "model_year": "2023",
         }
     }
     result = format_output_as_markdown(data)
@@ -181,3 +186,83 @@ def test_format_output_as_markdown_with_battery() -> None:
     assert "**Health:** 79.6%" in result
     assert "**Temperature:** 30.3°C / 86.5°F" in result
     assert "**Low Power Mode:** Disabled" in result
+
+
+def test_format_output_as_markdown_treats_bool_uptime_as_unknown() -> None:
+    """Boolean uptime values should not be formatted as seconds."""
+    data = {
+        "hardware": {
+            "model_name": "MacBook Pro",
+            "device_identifier": "Mac14,5",
+            "uptime": True,
+        }
+    }
+
+    result = format_output_as_markdown(data)
+
+    assert "**Uptime:** Unknown" in result
+
+
+def test_format_output_as_simple_prefers_model_name() -> None:
+    """Simple output should use the human-readable model name."""
+    data = {
+        "hardware": {
+            "model_name": "MacBook Pro",
+            "device_identifier": "arm64",
+            "model_size": "14-inch",
+            "release_date": "Jan 2023",
+            "processor": "Apple M2 Pro",
+            "serial_number": "SER123",
+            "macos_version": "14.0",
+            "memory": {"total": "16GB"},
+        }
+    }
+
+    result = format_output_as_simple(data)
+
+    assert result.splitlines()[0] == "MacBook Pro"
+
+
+def test_format_output_as_public_uses_model_name_and_retina_suffix() -> None:
+    """Public output should use a marketing name and preserve the Retina label."""
+    data = {
+        "hardware": {
+            "model_name": "MacBook Pro",
+            "device_identifier": "arm64",
+            "model_size": "14-inch",
+            "model_year": "2023",
+            "release_date": "Jan 2023",
+            "processor": "Apple M2 Pro",
+            "gpu_cores": 19,
+            "cpu_cores": 12,
+            "memory": {"total": "16GB"},
+            "storage": {"size": "512 GB"},
+        }
+    }
+
+    result = format_output_as_public(data)
+
+    assert "# Device\nMacBook Pro" in result
+    assert "# Model\n14-inch MacBook Pro Retina" in result
+
+
+def test_format_output_as_public_coerces_string_core_counts() -> None:
+    """Public output should accept JSON/YAML-style string core counts."""
+    data = {
+        "hardware": {
+            "model_name": "MacBook Pro",
+            "device_identifier": "Mac14,5",
+            "model_size": "14-inch",
+            "model_year": "2023",
+            "release_date": "Jan 2023",
+            "processor": "Apple M2 Max",
+            "gpu_cores": "30",
+            "cpu_cores": "12",
+            "memory": {"total": "32GB"},
+            "storage": {"size": "2 TB"},
+        }
+    }
+
+    result = format_output_as_public(data)
+
+    assert "# Processor\nApple M2 Max 12-Core (2023) 30-Core GPU" in result
