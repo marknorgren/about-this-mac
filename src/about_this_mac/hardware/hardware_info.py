@@ -138,6 +138,14 @@ class MacInfoGatherer:
                 logger.debug("sysctl stderr: %s", result.stderr)
         return "Unknown"
 
+    @staticmethod
+    def _parse_int_or_default(value: Any, default: int = 0) -> int:
+        """Return an integer value, or a safe default when parsing fails."""
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return default
+
     def _parse_apple_silicon_info(self, hw_data: Dict[str, Any]) -> Tuple[str, int, int, int, int]:
         """Parse Apple Silicon processor details."""
         # Get processor name from hardware info
@@ -260,7 +268,8 @@ class MacInfoGatherer:
 
     def _get_memory_info(self) -> MemoryInfo:
         """Get detailed memory information."""
-        memory_size = f"{int(int(self._get_sysctl_value('hw.memsize')) / (1024**3))}GB"
+        memsize_bytes = self._parse_int_or_default(self._get_sysctl_value("hw.memsize"))
+        memory_size = f"{memsize_bytes // (1024**3)}GB" if memsize_bytes else "Unknown"
         memory_type = "Unknown"
         memory_speed = "Unknown"
         manufacturer = "Unknown"
@@ -412,13 +421,16 @@ class MacInfoGatherer:
         if hw_info:
             hw_data = json.loads(hw_info).get("SPHardwareDataType", [{}])[0]
         else:
+            memsize_bytes = self._parse_int_or_default(self._get_sysctl_value("hw.memsize"))
             hw_data = {
                 "machine_model": self._get_sysctl_value("hw.model"),
                 "machine_name": platform.machine(),
                 "model_number": "Unknown (needs sudo)",
                 "serial_number": "Unknown (needs sudo)",
                 "cpu_type": self._get_sysctl_value("machdep.cpu.brand_string"),
-                "physical_memory": f"{int(int(self._get_sysctl_value('hw.memsize')) / (1024**3))}GB",
+                "physical_memory": (
+                    f"{memsize_bytes // (1024**3)}GB" if memsize_bytes else "Unknown"
+                ),
             }
 
         # Get processor info
@@ -431,7 +443,7 @@ class MacInfoGatherer:
             # Intel Mac handling
             cpu_brand = self._get_sysctl_value("machdep.cpu.brand_string")
             chip_name = cpu_brand if cpu_brand != "Unknown" else hw_data.get("cpu_type", "Unknown")
-            total_cores = int(self._get_sysctl_value("hw.ncpu"))
+            total_cores = self._parse_int_or_default(self._get_sysctl_value("hw.ncpu"))
             performance_cores = total_cores
             efficiency_cores = 0
             gpu_cores = 0
