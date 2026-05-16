@@ -4,11 +4,11 @@ default:
 
 # Install dependencies
 setup:
-    uv pip install -r requirements.txt
+    uv sync --extra dev
 
 # Install in development mode
 dev-setup:
-    uv pip install -e ".[dev]"
+    uv sync --extra dev
 
 # Run tests
 test:
@@ -125,4 +125,4 @@ clean:
     rm -rf dist
     rm -rf build
     rm -rf *.egg-info
-    find . -type d -name "__pycache__" -exec rm -r {} + 
+    find . -type d -name "__pycache__" -exec rm -r {} +
