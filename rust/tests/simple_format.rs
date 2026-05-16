@@ -19,7 +19,8 @@ fn simple_format_shape() {
             "machine_model": "Mac15,3",
             "model_number": "MRX33LL/A",
             "serial_number": "ABC123",
-            "chip_info": "Apple M3"
+            "chip_type": "Apple M4 Max",
+            "physical_memory": "128 GB"
         }]
     }"#;
     fs::write(
@@ -27,15 +28,24 @@ fn simple_format_shape() {
         hardware_json,
     )
     .unwrap();
-    fs::write(tmp.join("sw_vers__-productVersion.txt"), "14.4").unwrap();
+    let displays_json = r#"{
+        "SPDisplaysDataType": [{
+            "spdisplays_ndrvs": [{
+                "_spdisplays_pixels": "3024 x 1964",
+                "spdisplays_connection_type": "spdisplays_internal"
+            }]
+        }]
+    }"#;
+    fs::write(
+        tmp.join("system_profiler__SPDisplaysDataType__-json.txt"),
+        displays_json,
+    )
+    .unwrap();
+    fs::write(tmp.join("sysctl__-n__hw.memsize.txt"), "137438953472").unwrap();
+    fs::write(tmp.join("sw_vers__-productVersion.txt"), "26.4.1").unwrap();
 
     let out = Command::new(target_bin())
-        .args([
-            "--fixture-dir",
-            tmp.to_str().unwrap(),
-            "--format",
-            "simple",
-        ])
+        .args(["--fixture-dir", tmp.to_str().unwrap(), "--format", "simple"])
         .output()
         .expect("run binary");
     assert!(
@@ -47,17 +57,14 @@ fn simple_format_shape() {
     // strip trailing newline added by println!
     let got = got.trim_end_matches('\n');
 
-    // Phase 1: memory/model_size/release_date are not yet populated by the
-    // gatherer, so this assertion pins the current stub shape. It will tighten
-    // as fields are filled in port-by-port, byte-checked against Python.
     let want = "MacBook Pro\n\
+                14-inch, Mar 2024\n\
                 \n\
-                \n\
-                Chip          Apple M3\n\
-                Memory        \n\
+                Chip          Apple M4 Max\n\
+                Memory        128 GB\n\
                 Startup disk  Macintosh HD\n\
                 Serial number ABC123\n\
-                macOS         Sonoma 14.4";
+                macOS         26.4.1";
 
     assert_eq!(got, want, "\n--- got ---\n{got}\n--- want ---\n{want}");
 }
