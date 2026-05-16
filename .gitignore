@@ -55,3 +55,14 @@ coverage.xml
 # Git worktrees
 worktrees/
 .claude/settings.local.json
+
+# Go
+go/bin/
+go/dist/
+
+# Rust
+rust/target/
+rust/Cargo.lock.bak
+
+# Captured fixtures from real Macs (keep manifest, optionally commit fixtures)
+tests/fixtures/local/

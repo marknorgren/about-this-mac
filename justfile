@@ -114,6 +114,69 @@ release:
 release-dry-run:
     uv run semantic-release version --print
 
+# ------- Go port -------
+
+# Build the Go binary into go/bin/about-this-mac
+go-build:
+    cd go && go build -o bin/about-this-mac ./cmd/about-this-mac
+
+# Run Go tests
+go-test:
+    cd go && go test ./...
+
+# Run the Go binary (pass args after --, e.g. `just go-run -- --format simple`)
+go-run *args:
+    cd go && go run ./cmd/about-this-mac {{args}}
+
+# Build a universal-binary Go release (arm64 + amd64 → lipo)
+go-release:
+    cd go && \
+      GOOS=darwin GOARCH=arm64 go build -o bin/about-this-mac-arm64 ./cmd/about-this-mac && \
+      GOOS=darwin GOARCH=amd64 go build -o bin/about-this-mac-amd64 ./cmd/about-this-mac && \
+      lipo -create -output bin/about-this-mac bin/about-this-mac-arm64 bin/about-this-mac-amd64 && \
+      rm bin/about-this-mac-arm64 bin/about-this-mac-amd64
+
+# ------- Rust port -------
+
+# Build the Rust binary (debug)
+rust-build:
+    cd rust && cargo build
+
+# Run Rust tests
+rust-test:
+    cd rust && cargo test
+
+# Run the Rust binary (pass args after --, e.g. `just rust-run -- --format simple`)
+rust-run *args:
+    cd rust && cargo run -- {{args}}
+
+# Build a universal-binary Rust release (arm64 + x86_64 → lipo)
+rust-release:
+    cd rust && \
+      cargo build --release --target aarch64-apple-darwin && \
+      cargo build --release --target x86_64-apple-darwin && \
+      lipo -create \
+        -output target/about-this-mac \
+        target/aarch64-apple-darwin/release/about-this-mac \
+        target/x86_64-apple-darwin/release/about-this-mac
+
+# ------- Fixtures + parity -------
+
+# Capture every system_profiler/sysctl/ioreg output + Python golden outputs.
+# Run on a real Mac. Defaults to tests/fixtures/local/ (gitignored).
+capture-fixtures dir="tests/fixtures/local":
+    ./scripts/capture-fixtures.sh {{dir}}
+
+# Run both ports against the same fixture dir and diff against Python golden
+# output. Requires `just capture-fixtures` to have run first.
+parity dir="tests/fixtures/local":
+    cd go && go run ./cmd/about-this-mac --fixture-dir ../{{dir}}/cmd --format simple > /tmp/atm-go-simple.txt
+    cd rust && cargo run --quiet -- --fixture-dir ../{{dir}}/cmd --format simple > /tmp/atm-rust-simple.txt
+    diff -u {{dir}}/golden/report.simple.txt /tmp/atm-go-simple.txt && echo "Go: simple OK"
+    diff -u {{dir}}/golden/report.simple.txt /tmp/atm-rust-simple.txt && echo "Rust: simple OK"
+
+# ------- Cleanup -------
+
 # Clean generated files
 clean:
     rm -f mac-info-*.md
