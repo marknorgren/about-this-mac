@@ -55,3 +55,4 @@ coverage.xml
 # Git worktrees
 worktrees/
 .claude/settings.local.json
+.entire
