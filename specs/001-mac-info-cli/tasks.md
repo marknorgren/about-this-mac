@@ -5,9 +5,11 @@
 **Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/, quickstart.md
 
 **Tests**: This feature reverse-documents shipped v0.2.2. No production behavior
-changes. The only new code is two regression-test additions (privacy negative
-assertion, non-macOS early-exit) that close gaps found during planning; all other
-tasks verify existing behavior against the spec contracts. Test tasks are written
+changes. The only new code is four regression-test additions that close gaps
+found during planning and analysis: public-format privacy negative assertion
+(T008), non-macOS early-exit (T012), limited-permission / no-battery graceful
+degradation (T015), and conflicting-flag usage errors (T016). All other tasks
+verify existing behavior against the spec contracts. Test tasks are written
 before any change and must demonstrably be able to fail (red-green) per
 Constitution Principle III.
 
@@ -123,13 +125,18 @@ via its quickstart command.
 
 - [ ] T012 Add non-macOS early-exit test in `tests/test_cli.py`: monkeypatch `about_this_mac.hardware.hardware_info.platform.system` to return `"Linux"`, invoke the CLI entry point, and assert it exits non-zero with the clear "only works on macOS" message and emits no partial report. (Characterization test for the existing `hardware_info.py:83` guard — the gap is the missing test, not the behavior; verify it fails if the guard is removed.)
 
+### Test (write before any change) ⚠️
+
+- [ ] T015 Add graceful-degradation test (FR-013, SC-006) in `tests/test_hardware_info.py` (and `tests/test_battery_info.py` for the no-battery path): monkeypatch the gatherer's command execution to return empty/failed output, then assert the gatherer still produces a report whose unresolved fields render as the `UNKNOWN_VALUE` marker and that no uncaught exception escapes. Prove it can fail (e.g., temporarily assert a non-Unknown value) before pinning the real assertion. Closes analysis finding G1.
+
 ### Cross-cutting verification
 
-- [ ] T013 Verify color contract (FR-015): `NO_COLOR=1 about-this-mac` and `about-this-mac --color -o /tmp/atm.txt` emit no ANSI codes; `--color` on a TTY does
+- [ ] T013 Verify verbosity + color contract (FR-009, FR-015): confirm `-q` suppresses warnings and `-v` enables DEBUG logging; `NO_COLOR=1 about-this-mac` and `about-this-mac --color -o /tmp/atm.txt` emit no ANSI codes while `--color` on a TTY does
 - [ ] T014 Verify error/exit contract (FR-014): an induced error exits non-zero (not asserting a specific code) and writes the message to stderr
-- [ ] T015 Run the full CI-parity gate green and confirm coverage did not decrease vs the T002 baseline: `just fmt-check && just type-check && just lint && uv run pytest --cov=src/about_this_mac --cov-report=term-missing:skip-covered tests/`
+- [ ] T016 Verify mutually-exclusive flags (spec edge case) in `tests/test_cli.py`: assert `--json --plain`, `--color --no-color`, and `-v -q` each exit non-zero with an argparse usage error. Closes analysis finding G2.
+- [ ] T017 Run the full CI-parity gate green and confirm coverage did not decrease vs the T002 baseline: `just fmt-check && just type-check && just lint && uv run pytest --cov=src/about_this_mac --cov-report=term-missing:skip-covered tests/`
 
-**Checkpoint**: Both gaps closed; all contracts verified; gate green.
+**Checkpoint**: All four test gaps closed; all contracts verified; gate green.
 
 ---
 
@@ -139,21 +146,23 @@ via its quickstart command.
 - **Foundational (T003)** → blocks story phases.
 - **User stories (Phase 3–7)** are independent of each other and can run in any
   order or in parallel once Foundational is done. Each is independently testable.
-- **Polish (Phase 8)**: T012 is independent (test-only); T015 (full gate) MUST run
-  last, after T008 and T012 add their tests.
+- **Polish (Phase 8)**: T012, T015, and T016 are independent (test-only); T017
+  (full gate) MUST run last, after T008, T012, T015, and T016 add their tests.
 - **Story priority for incremental delivery**: US1 (MVP) → US2 → US3 → US4 → US5.
 
 ### Parallel opportunities
 
 - After T003: T004/T005, T006/T007, T010, T011 can proceed in parallel (distinct
   commands/files).
-- The two new-test tasks touch different files and can be written in parallel:
-  `T008` (`tests/commands/test_report.py`) and `T012` (`tests/test_cli.py`).
+- The new-test tasks touch different files and can be written in parallel:
+  `T008` (`tests/commands/test_report.py`), `T012` + `T016` (`tests/test_cli.py`
+  — same file, so sequential to each other), and `T015`
+  (`tests/test_hardware_info.py` / `tests/test_battery_info.py`).
 
 ## Implementation Strategy
 
 - **MVP scope**: Phase 1–3 (Setup + Foundational + US1) proves the core tool works.
-- **Real new work**: T008 and T012 are the only tasks that add code (test-only).
-  Everything else is verification of shipped v0.2.2 behavior.
+- **Real new work**: T008, T012, T015, and T016 are the only tasks that add code
+  (test-only). Everything else is verification of shipped v0.2.2 behavior.
 - **No production source changes** are planned; if any verification task reveals a
   contract violation, stop and open a separate fix spec (do not patch silently).

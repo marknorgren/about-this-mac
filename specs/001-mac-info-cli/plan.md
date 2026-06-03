@@ -10,11 +10,13 @@ This is a **conformance plan** for an already-shipped feature, not a greenfield
 build. `about-this-mac` v0.2.2 already implements the full CLI surface, six
 output formats, macOS source gathering, and the public-format privacy boundary
 described in the spec. The work this plan governs is therefore: (1) verify the
-shipped implementation against each spec contract, and (2) close the two
-regression-test gaps the clarification session surfaced — a negative privacy
-assertion for the `public` format and an explicit non-macOS early-exit test.
-No production behavior changes; the deliverable is documented conformance plus
-guard tests so the baseline contract cannot silently regress.
+shipped implementation against each spec contract, and (2) close the
+regression-test gaps surfaced during clarification and analysis — a negative
+privacy assertion for the `public` format, a non-macOS early-exit test, a
+limited-permission / no-battery graceful-degradation test, and a
+mutually-exclusive-flag usage-error test. No production behavior changes; the
+deliverable is documented conformance plus guard tests so the baseline contract
+cannot silently regress.
 
 ## Technical Context
 
@@ -71,13 +73,15 @@ contract, performance gate) were resolved in the spec's Clarifications session
   **Gap**: no negative test asserts serial/network absence in `public` output
   (`test_report.py:66` sets a serial but asserts only presence of other fields).
   Remediated in Phase 1 (guard test).
-- **Test-First Quality** — **PASS**. The two new guard tests are written before
-  any code is touched. Because the implementation already conforms, the privacy
-  guard test is expected to pass on first run against current output; to honor
-  red-green it is first asserted against a deliberately-leaky stub to prove the
-  assertion can fail, then pointed at the real formatter. The non-macOS test
-  monkeypatches `platform.system` to a non-Darwin value and asserts a non-zero
-  exit.
+- **Test-First Quality** — **PASS**. The four new guard tests are written before
+  any code is touched. Because the implementation already conforms, each is
+  expected to pass on first run; to honor red-green every guard test is first
+  asserted against a deliberately-failing condition (leaky stub, non-Unknown
+  value) to prove it can fail, then pointed at the real behavior. The non-macOS
+  test monkeypatches `platform.system` to a non-Darwin value and asserts a
+  non-zero exit; the degradation test monkeypatches command execution to empty
+  output and asserts `UNKNOWN_VALUE` markers with no uncaught exception; the
+  flag test asserts argparse rejects mutually-exclusive flags.
 - **Deep Modules** — **PASS**. No change to module boundaries. Gathering
   (`hardware/`, `battery/`), raw execution (`commands/raw.py`), formatting
   (`utils/formatting.py`), output handling (`output.py`), and dispatch (`cli.py`)
@@ -88,9 +92,9 @@ contract, performance gate) were resolved in the spec's Clarifications session
   quickstart.md and the spec's per-story Independent Tests.
 
 **Post-Phase 1 re-evaluation:** PASS (unchanged). Design artifacts add only
-documentation and two tests; no new abstractions, dependencies, or boundary
-violations introduced. Complexity Tracking table is empty — no violations to
-justify.
+documentation and four test additions; no new abstractions, dependencies, or
+boundary violations introduced. Complexity Tracking table is empty — no
+violations to justify.
 
 ## Project Structure
 
@@ -132,14 +136,16 @@ Files this feature **adds to** (test-only):
 
 ```text
 tests/
-├── commands/test_report.py      # ADD: negative privacy assertion for public format
-└── test_cli.py                  # ADD: non-macOS early-exit exits non-zero
+├── commands/test_report.py      # ADD: negative privacy assertion for public format (T008)
+├── test_cli.py                  # ADD: non-macOS early-exit (T012) + mutually-exclusive flags (T016)
+├── test_hardware_info.py        # ADD: limited-permission graceful-degradation (T015)
+└── test_battery_info.py         # ADD: no-battery degradation path (T015)
 ```
 
 **Structure Decision**: Reuse all existing modules; touch only `tests/`. No new
 source modules, packages, or helpers. This matches Constitution Principle IV
 (reuse existing helpers before adding new ones) and the "smallest change that
-solves the root cause" rule — the only real change is adding the two missing
+solves the root cause" rule — the only real change is adding the four missing
 guard tests; everything else is verification of shipped behavior.
 
 ## Complexity Tracking
