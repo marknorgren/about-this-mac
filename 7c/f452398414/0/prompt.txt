@@ -1,0 +1,42 @@
+/speckit.specify
+
+---
+
+geneate the spec for what is built here
+
+---
+
+/speckit-git-commit
+
+---
+
+/speckit.clarify
+
+---
+
+✻ Worked for 4m 2s
+
+⏺ Unknown command: /speckit-git-commit
+
+❯ /reload-skills                                                                                                            
+  ⎿  Reloaded skills: 189 skills available (no changes)
+
+---
+
+/speckit.plan
+
+---
+
+commit then proceed
+
+---
+
+/speckit.analyze
+
+---
+
+go with recommendations
+
+---
+
+/speckit.implement

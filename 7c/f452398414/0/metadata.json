@@ -1,0 +1,34 @@
+{
+  "cli_version": "0.4.2",
+  "checkpoint_id": "7cf452398414",
+  "session_id": "c7e8766e-a633-44f3-8a42-28feed74b6c4",
+  "strategy": "manual-commit",
+  "created_at": "2026-06-03T22:37:14.005402Z",
+  "branch": "001-mac-info-cli",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "tests/commands/test_report.py",
+    "tests/test_cli.py",
+    "tests/test_hardware_info.py"
+  ],
+  "agent": "Claude Code",
+  "transcript_identifier_at_start": "3edbce84-facc-44dc-a3a8-d9b3b1cc323f",
+  "checkpoint_transcript_start": 502,
+  "transcript_lines_at_start": 502,
+  "token_usage": {
+    "input_tokens": 6960,
+    "cache_creation_tokens": 56492,
+    "cache_read_tokens": 6317753,
+    "output_tokens": 26523,
+    "api_call_count": 31
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-06-03T22:37:13.941075Z",
+    "agent_lines": 172,
+    "human_added": 17,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 189,
+    "agent_percentage": 91.005291005291
+  }
+}

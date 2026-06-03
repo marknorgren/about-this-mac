@@ -1,0 +1,28 @@
+{
+  "cli_version": "0.4.2",
+  "checkpoint_id": "7cf452398414",
+  "strategy": "manual-commit",
+  "branch": "001-mac-info-cli",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "tests/commands/test_report.py",
+    "tests/test_cli.py",
+    "tests/test_hardware_info.py"
+  ],
+  "sessions": [
+    {
+      "metadata": "/7c/f452398414/0/metadata.json",
+      "transcript": "/7c/f452398414/0/full.jsonl",
+      "context": "/7c/f452398414/0/context.md",
+      "content_hash": "/7c/f452398414/0/content_hash.txt",
+      "prompt": "/7c/f452398414/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 6960,
+    "cache_creation_tokens": 56492,
+    "cache_read_tokens": 6317753,
+    "output_tokens": 26523,
+    "api_call_count": 31
+  }
+}
