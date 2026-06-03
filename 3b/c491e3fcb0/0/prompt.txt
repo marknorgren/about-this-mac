@@ -1,0 +1,9 @@
+/speckit.specify
+
+---
+
+geneate the spec for what is built here
+
+---
+
+/speckit-git-commit
