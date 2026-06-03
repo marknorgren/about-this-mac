@@ -1,5 +1,10 @@
 # AGENTS
 
+<!-- SPECKIT START -->
+For additional context about technologies to be used, project structure,
+shell commands, and other important information, read the current plan
+<!-- SPECKIT END -->
+
 ## Cloud agent environment
 
 Use the **devcontainer** (`.devcontainer/`) so **uv** and **just** are preinstalled and on PATH. If not using the devcontainer, bootstrap once:
