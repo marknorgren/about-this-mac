@@ -89,3 +89,48 @@ def test_format_output_uses_simple_and_public() -> None:
     public = report._format_output(data, "public")
     assert "# Device" in public
     assert "MacBook" in public
+
+
+def test_public_format_excludes_sensitive_identifiers() -> None:
+    """OC-004: public output must omit serial, unique device IDs, and network IDs.
+
+    The public formatter is allowlist-based, so this guards against a future
+    field being added that leaks. The positive control at the end (serial IS
+    present in text output) proves the negative assertions can detect a real
+    leak rather than passing vacuously.
+    """
+    secret_serial = "C02SECRETXYZ9"
+    secret_device_id = "Mac14,9"
+    secret_mac = "AA:BB:CC:DD:EE:FF"
+    secret_hostname = "marks-private-host"
+    data = {
+        "hardware": {
+            "model_name": "MacBook Pro",
+            "device_identifier": secret_device_id,
+            "serial_number": secret_serial,
+            "mac_address": secret_mac,
+            "hostname": secret_hostname,
+            "model_size": "14-inch",
+            "model_year": "2023",
+            "release_date": "Jan 2023",
+            "processor": "Apple M2 Max",
+            "memory": {"total": "16GB"},
+            "storage": {"size": "512 GB"},
+            "graphics": [],
+            "gpu_cores": 30,
+            "cpu_cores": 12,
+        }
+    }
+
+    public = report._format_output(data, "public")
+    for label, value in (
+        ("serial_number", secret_serial),
+        ("device_identifier", secret_device_id),
+        ("mac_address", secret_mac),
+        ("hostname", secret_hostname),
+    ):
+        assert value not in public, f"public output leaked {label}: {value}"
+
+    # Positive control: the serial DOES appear in the text format, proving the
+    # negative assertions above can detect a leak (red-green).
+    assert secret_serial in report._format_output(data, "text")

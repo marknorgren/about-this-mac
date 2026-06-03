@@ -107,3 +107,52 @@ def test_markdown_with_output_writes_file(monkeypatch: pytest.MonkeyPatch, tmp_p
     assert target.exists()
     content = target.read_text(encoding="utf-8")
     assert content.startswith("# Mac System Information")
+
+
+def test_non_macos_exits_nonzero_without_partial_report(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """FR-012 / SC-005: on a non-macOS host the CLI fails early and clearly.
+
+    The real MacInfoGatherer guard runs (we do NOT patch it); only the platform
+    probe is faked. A non-zero exit and a clear message are required, with no
+    partial report on stdout.
+    """
+    monkeypatch.setattr("about_this_mac.hardware.hardware_info.platform.system", lambda: "Linux")
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr("sys.argv", ["about-this-mac"], raising=False)
+
+    stdout_buf = io.StringIO()
+    stderr_buf = io.StringIO()
+    with redirect_stdout(stdout_buf), redirect_stderr(stderr_buf):
+        with pytest.raises(SystemExit) as exc_info:
+            cli.main()
+
+    assert exc_info.value.code not in (0, None)
+    assert "macOS" in stderr_buf.getvalue()
+    assert stdout_buf.getvalue() == ""
+
+
+@pytest.mark.parametrize(
+    "conflicting_flags",
+    [
+        ["--json", "--plain"],
+        ["--color", "--no-color"],
+        ["--verbose", "--quiet"],
+    ],
+)
+def test_mutually_exclusive_flags_exit_nonzero(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, conflicting_flags: List[str]
+) -> None:
+    """Spec edge case: conflicting flags are rejected by argparse (non-zero exit)."""
+    monkeypatch.setattr(cli, "MacInfoGatherer", FakeGatherer)
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr("sys.argv", ["about-this-mac"] + conflicting_flags, raising=False)
+
+    stderr_buf = io.StringIO()
+    with redirect_stderr(stderr_buf):
+        with pytest.raises(SystemExit) as exc_info:
+            cli.main()
+
+    assert exc_info.value.code not in (0, None)
+    assert "not allowed with" in stderr_buf.getvalue()

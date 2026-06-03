@@ -171,3 +171,81 @@ def test_get_hardware_info_handles_unknown_sysctl_values(
     assert info.performance_cores == 0
     assert info.efficiency_cores == 0
     assert info.device_identifier == "x86_64"
+
+
+def test_get_hardware_info_degrades_privileged_fields_without_sudo(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """FR-013 / SC-006: without privileged access the serial and model number
+    degrade to documented "Unknown (needs sudo)" markers instead of crashing or
+    leaking, and a complete HardwareInfo is still produced (Apple Silicon path).
+    """
+    gatherer = object.__new__(MacInfoGatherer)
+    gatherer._battery = MagicMock()
+    gatherer._cached_hw_json = ""  # no cached privileged JSON
+    gatherer.has_full_permissions = False
+
+    # All privileged commands return empty (permission denied / unavailable).
+    monkeypatch.setattr(gatherer, "_run_command", MagicMock(return_value=""))
+    monkeypatch.setattr(gatherer, "_get_sysctl_value", MagicMock(return_value="Unknown"))
+    monkeypatch.setattr("about_this_mac.hardware.hardware_info.platform.machine", lambda: "arm64")
+    monkeypatch.setattr(
+        "about_this_mac.hardware.hardware_info.platform.mac_ver", lambda: ("14.4", "", "")
+    )
+    monkeypatch.setattr("about_this_mac.hardware.hardware_info.platform.processor", lambda: "arm")
+    monkeypatch.setattr(
+        gatherer,
+        "_parse_apple_silicon_info",
+        MagicMock(return_value=("Apple M2", 8, 4, 4, 10)),
+    )
+    monkeypatch.setattr(
+        gatherer,
+        "_get_memory_info",
+        MagicMock(
+            return_value=MemoryInfo(
+                total="Unknown",
+                type="Unknown",
+                speed="Unknown",
+                manufacturer="Unknown",
+                ecc=False,
+            )
+        ),
+    )
+    monkeypatch.setattr(
+        gatherer,
+        "_get_storage_info",
+        MagicMock(
+            return_value=StorageInfo(
+                name="Unknown",
+                model="Unknown",
+                revision="Unknown",
+                serial="Unknown",
+                size="Unknown",
+                type="Unknown",
+                protocol="Unknown",
+                trim=False,
+                smart_status="Unknown",
+                removable=False,
+                internal=False,
+            )
+        ),
+    )
+    monkeypatch.setattr(gatherer, "_get_graphics_info", MagicMock(return_value=[]))
+    monkeypatch.setattr(
+        gatherer, "_get_bluetooth_info", MagicMock(return_value=("Unknown", "Unknown", "Unknown"))
+    )
+    monkeypatch.setattr(gatherer, "_get_uptime", MagicMock(return_value=None))
+    monkeypatch.setattr(
+        gatherer,
+        "_get_model_metadata",
+        MagicMock(return_value=("MacBook Pro", "14-inch", "2023", "Jan 2023")),
+    )
+
+    info = gatherer.get_hardware_info()
+
+    # Privileged fields degrade to the documented marker, not a real value or crash.
+    assert info.serial_number == "Unknown (needs sudo)"
+    assert info.model_number == "Unknown (needs sudo)"
+    # The rest of the report is still populated from non-privileged sources.
+    assert info.processor == "Apple M2"
+    assert info.macos_version == "14.4"
