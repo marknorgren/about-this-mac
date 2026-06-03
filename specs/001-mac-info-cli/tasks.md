@@ -34,8 +34,8 @@ via its quickstart command.
 
 **Purpose**: Reproducible environment and a known-green baseline.
 
-- [ ] T001 Sync dev environment: `uv sync --extra dev`
-- [ ] T002 Record CI-parity baseline (green) before changes: `just fmt-check && just type-check && just lint && uv run pytest --cov=src/about_this_mac --cov-report=term-missing:skip-covered tests/`
+- [X] T001 Sync dev environment: `uv sync --extra dev`
+- [X] T002 Record CI-parity baseline (green) before changes: `just fmt-check && just type-check && just lint && uv run pytest --cov=src/about_this_mac --cov-report=term-missing:skip-covered tests/`
 
 ---
 
@@ -43,7 +43,7 @@ via its quickstart command.
 
 **Purpose**: Confirm shared fixtures exist; no new infrastructure is required.
 
-- [ ] T003 Confirm existing sample-data fixtures in `tests/conftest.py` cover hardware + battery dictionaries used by formatter tests; reuse them (do NOT add new fixtures unless a gap is proven)
+- [X] T003 Confirm existing sample-data fixtures in `tests/conftest.py` cover hardware + battery dictionaries used by formatter tests; reuse them (do NOT add new fixtures unless a gap is proven)
 
 **Checkpoint**: Baseline green and fixtures confirmed — story verification can begin in parallel.
 
@@ -55,8 +55,8 @@ via its quickstart command.
 
 **Independent Test**: `about-this-mac` prints a human-readable report and exits 0.
 
-- [ ] T004 [US1] Verify default report and section filters: run `about-this-mac`, `about-this-mac --section hardware`, `about-this-mac --section battery`; confirm correct scoping and exit 0 (dogfood to `reports/`, do not commit)
-- [ ] T005 [P] [US1] Confirm existing coverage for the default/text path in `tests/utils/test_formatting.py` and `tests/commands/test_report.py` still passes (no change expected)
+- [X] T004 [US1] Verify default report and section filters: run `about-this-mac`, `about-this-mac --section hardware`, `about-this-mac --section battery`; confirm correct scoping and exit 0 (dogfood to `reports/`, do not commit)
+- [X] T005 [P] [US1] Confirm existing coverage for the default/text path in `tests/utils/test_formatting.py` and `tests/commands/test_report.py` still passes (no change expected)
 
 **Checkpoint**: US1 verified — MVP behavior confirmed.
 
@@ -68,8 +68,8 @@ via its quickstart command.
 
 **Independent Test**: `--format json` parses as JSON; `--format yaml` parses as YAML.
 
-- [ ] T006 [P] [US2] Verify structured output parses: `about-this-mac --format json | python -m json.tool` and `about-this-mac --format yaml | python -c 'import sys,yaml; yaml.safe_load(sys.stdin)'`
-- [ ] T007 [P] [US2] Verify file output: `about-this-mac --json -o /tmp/atm.json` writes the report; `-o -` writes to stdout
+- [X] T006 [P] [US2] Verify structured output parses: `about-this-mac --format json | python -m json.tool` and `about-this-mac --format yaml | python -c 'import sys,yaml; yaml.safe_load(sys.stdin)'`
+- [X] T007 [P] [US2] Verify file output: `about-this-mac --json -o /tmp/atm.json` writes the report; `-o -` writes to stdout
 
 **Checkpoint**: US2 verified — automation contract holds.
 
@@ -83,11 +83,11 @@ via its quickstart command.
 
 ### Test for User Story 3 (write before any change) ⚠️
 
-- [ ] T008 [US3] Add the missing negative privacy regression test in `tests/commands/test_report.py`: feed a fixture whose hardware dict includes `serial_number`, `device_identifier`, and synthetic MAC/hostname values into `format_output_as_public`, then assert NONE of those strings appear in the output. Prove it can fail first (assert against a deliberately-leaky local stub formatter), then point the assertion at the real `format_output_as_public` and confirm it passes. This guards the allowlist against future leaks.
+- [X] T008 [US3] Add the missing negative privacy regression test in `tests/commands/test_report.py`: feed a fixture whose hardware dict includes `serial_number`, `device_identifier`, and synthetic MAC/hostname values into `format_output_as_public`, then assert NONE of those strings appear in the output. Prove it can fail first (assert against a deliberately-leaky local stub formatter), then point the assertion at the real `format_output_as_public` and confirm it passes. This guards the allowlist against future leaks.
 
 ### Verification for User Story 3
 
-- [ ] T009 [US3] Dogfood `about-this-mac --format public` and `about-this-mac --format simple`; confirm `public` omits the serial while `simple` includes it (run the quickstart privacy spot-check; expect `OK`)
+- [X] T009 [US3] Dogfood `about-this-mac --format public` and `about-this-mac --format simple`; confirm `public` omits the serial while `simple` includes it (run the quickstart privacy spot-check; expect `OK`)
 
 **Checkpoint**: US3 verified — privacy boundary is now test-guarded.
 
@@ -99,7 +99,7 @@ via its quickstart command.
 
 **Independent Test**: `about-this-mac --hardware-info` prints raw `SPHardwareDataType`.
 
-- [ ] T010 [P] [US4] Verify each raw flag prints source output and skips the formatted report: `--hardware-info`, `--power-info`, `--graphics-info`, `--storage-info`, `--memory-info`, `--audio-info`, `--network-info`, and `--release-date`; confirm existing coverage in `tests/commands/test_raw.py` passes
+- [X] T010 [P] [US4] Verify each raw flag prints source output and skips the formatted report: `--hardware-info`, `--power-info`, `--graphics-info`, `--storage-info`, `--memory-info`, `--audio-info`, `--network-info`, and `--release-date`; confirm existing coverage in `tests/commands/test_raw.py` passes
 
 **Checkpoint**: US4 verified — raw passthrough intact.
 
@@ -111,7 +111,7 @@ via its quickstart command.
 
 **Independent Test**: `about-this-mac --help` and `about-this-mac --version` both exit 0.
 
-- [ ] T011 [P] [US5] Verify `about-this-mac --help` lists all flags + examples and `about-this-mac --version` prints the version; confirm coverage in `tests/test_cli.py` passes
+- [X] T011 [P] [US5] Verify `about-this-mac --help` lists all flags + examples and `about-this-mac --version` prints the version; confirm coverage in `tests/test_cli.py` passes
 
 **Checkpoint**: US5 verified.
 
@@ -123,18 +123,18 @@ via its quickstart command.
 
 ### Test (write before any change) ⚠️
 
-- [ ] T012 Add non-macOS early-exit test in `tests/test_cli.py`: monkeypatch `about_this_mac.hardware.hardware_info.platform.system` to return `"Linux"`, invoke the CLI entry point, and assert it exits non-zero with the clear "only works on macOS" message and emits no partial report. (Characterization test for the existing `hardware_info.py:83` guard — the gap is the missing test, not the behavior; verify it fails if the guard is removed.)
+- [X] T012 Add non-macOS early-exit test in `tests/test_cli.py`: monkeypatch `about_this_mac.hardware.hardware_info.platform.system` to return `"Linux"`, invoke the CLI entry point, and assert it exits non-zero with the clear "only works on macOS" message and emits no partial report. (Characterization test for the existing `hardware_info.py:83` guard — the gap is the missing test, not the behavior; verify it fails if the guard is removed.)
 
 ### Test (write before any change) ⚠️
 
-- [ ] T015 Add graceful-degradation test (FR-013, SC-006) in `tests/test_hardware_info.py` (and `tests/test_battery_info.py` for the no-battery path): monkeypatch the gatherer's command execution to return empty/failed output, then assert the gatherer still produces a report whose unresolved fields render as the `UNKNOWN_VALUE` marker and that no uncaught exception escapes. Prove it can fail (e.g., temporarily assert a non-Unknown value) before pinning the real assertion. Closes analysis finding G1.
+- [X] T015 Add graceful-degradation test (FR-013, SC-006) in `tests/test_hardware_info.py` (and `tests/test_battery_info.py` for the no-battery path): monkeypatch the gatherer's command execution to return empty/failed output, then assert the gatherer still produces a report whose unresolved fields render as the `UNKNOWN_VALUE` marker and that no uncaught exception escapes. Prove it can fail (e.g., temporarily assert a non-Unknown value) before pinning the real assertion. Closes analysis finding G1.
 
 ### Cross-cutting verification
 
-- [ ] T013 Verify verbosity + color contract (FR-009, FR-015): confirm `-q` suppresses warnings and `-v` enables DEBUG logging; `NO_COLOR=1 about-this-mac` and `about-this-mac --color -o /tmp/atm.txt` emit no ANSI codes while `--color` on a TTY does
-- [ ] T014 Verify error/exit contract (FR-014): an induced error exits non-zero (not asserting a specific code) and writes the message to stderr
-- [ ] T016 Verify mutually-exclusive flags (spec edge case) in `tests/test_cli.py`: assert `--json --plain`, `--color --no-color`, and `-v -q` each exit non-zero with an argparse usage error. Closes analysis finding G2.
-- [ ] T017 Run the full CI-parity gate green and confirm coverage did not decrease vs the T002 baseline: `just fmt-check && just type-check && just lint && uv run pytest --cov=src/about_this_mac --cov-report=term-missing:skip-covered tests/`
+- [X] T013 Verify verbosity + color contract (FR-009, FR-015): confirm `-q` suppresses warnings and `-v` enables DEBUG logging; `NO_COLOR=1 about-this-mac` and `about-this-mac --color -o /tmp/atm.txt` emit no ANSI codes while `--color` on a TTY does
+- [X] T014 Verify error/exit contract (FR-014): an induced error exits non-zero (not asserting a specific code) and writes the message to stderr
+- [X] T016 Verify mutually-exclusive flags (spec edge case) in `tests/test_cli.py`: assert `--json --plain`, `--color --no-color`, and `-v -q` each exit non-zero with an argparse usage error. Closes analysis finding G2.
+- [X] T017 Run the full CI-parity gate green and confirm coverage did not decrease vs the T002 baseline: `just fmt-check && just type-check && just lint && uv run pytest --cov=src/about_this_mac --cov-report=term-missing:skip-covered tests/`
 
 **Checkpoint**: All four test gaps closed; all contracts verified; gate green.
 
