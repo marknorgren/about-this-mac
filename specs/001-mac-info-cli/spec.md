@@ -19,6 +19,21 @@ renders them in human- and machine-readable formats. This specification
 describes the behavior already shipped, so it serves as the baseline contract
 for future changes.
 
+## Clarifications
+
+### Session 2026-06-02
+
+- Q: Beyond the serial number, how broad is the `public`-format privacy
+  exclusion? → A: Exclude the serial number, all unique device identifiers
+  (hardware/provisioning UUID, device identifier), AND network identifiers
+  (Wi-Fi/Bluetooth MAC addresses, hostname) — even fields not surfaced today.
+- Q: What is the error exit-code contract for automation? → A: Guarantee
+  non-zero on error; no specific code is promised, leaving room for a future
+  taxonomy without a breaking change.
+- Q: Should Success Criteria include a measurable runtime/latency target? → A:
+  No hard target; runtime is dominated by macOS source commands outside the
+  tool's control.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Read a complete Mac summary on the terminal (Priority: P1)
@@ -89,13 +104,16 @@ serial numbers enable warranty fraud and tracking.
 
 **Independent Test**: Run `about-this-mac --format public` and confirm the output
 contains marketing-friendly specs (model, size, storage, memory) and contains no
-serial number or device identifier string.
+serial number, unique device identifier, or network identifier (MAC address,
+hostname) string.
 
 **Acceptance Scenarios**:
 
 1. **Given** a supported Mac, **When** the user runs `about-this-mac --format
    public`, **Then** a sales-friendly summary is produced that omits the serial
-   number and unique device identifiers.
+   number, all unique device identifiers (hardware/provisioning UUID, device
+   identifier), and network identifiers (Wi-Fi/Bluetooth MAC addresses,
+   hostname).
 2. **Given** a supported Mac, **When** the user runs `about-this-mac --format
    simple`, **Then** a concise summary is produced that DOES include the serial
    number (internal/owner use).
@@ -194,9 +212,11 @@ string is printed.
 - **FR-009**: Users MUST be able to control verbosity via `-v/--verbose` and
   `-q/--quiet`, and color via `--color`/`--no-color`.
 - **FR-010**: The tool MUST expose `--version` and `--help`.
-- **FR-011**: The `public` format MUST exclude the serial number and unique
-  device identifiers; the `simple`, `text`, `json`, `yaml`, and `markdown`
-  formats MAY include them.
+- **FR-011**: The `public` format MUST exclude the serial number, all unique
+  device identifiers (hardware/provisioning UUID, device identifier), and
+  network identifiers (Wi-Fi/Bluetooth MAC addresses, hostname) — including
+  any such field not surfaced today, should it ever be added. The `simple`,
+  `text`, `json`, `yaml`, and `markdown` formats MAY include them.
 - **FR-012**: The tool MUST fail early with a clear error when run on a non-macOS
   platform.
 - **FR-013**: When a source command fails or lacks permission, the tool MUST
@@ -204,7 +224,9 @@ string is printed.
   hint and MUST NOT crash the whole report.
 - **FR-014**: Errors MUST be reported with enough context (message and, where
   applicable, a hint) to let a human or agent retry, downgrade, or escalate, and
-  MUST exit with a non-zero status.
+  MUST exit with a non-zero status. The contract guarantees only that the exit
+  status is non-zero on error; no specific code is promised, so automation MUST
+  test for non-zero rather than a fixed value.
 - **FR-015**: Color MUST be emitted only for TTY text output and MUST be
   suppressed when output is redirected to a file, `--no-color` is set, `NO_COLOR`
   is set, or `TERM=dumb`.
@@ -220,8 +242,9 @@ string is printed.
   `--network-info`, `--release-date`. `--format`/`--json`/`--plain` are mutually
   exclusive; `--verbose`/`--quiet` are mutually exclusive; `--color`/`--no-color`
   are mutually exclusive. The report writes to stdout (or the `--output` target);
-  errors write to stderr; success exits 0 and errors exit non-zero. `--help`
-  lists all flags plus example invocations.
+  errors write to stderr; success exits 0 and errors exit non-zero (a specific
+  error code is not part of the contract — see FR-014). `--help` lists all flags
+  plus example invocations.
 - **OC-002 (Output formats)**: Affected formats are `text`, `json`, `yaml`,
   `markdown`, `public`, and `simple`. `json` MUST parse as JSON; `yaml` MUST
   parse as YAML. `text` is the default human report; `markdown` is a document;
@@ -235,10 +258,14 @@ string is printed.
   `kern.boottime`), `pmset -g batt`, `networksetup -listallhardwareports`,
   `netstat -i`, and Python `platform` APIs. Limited-permission fallback is
   documented unknown/empty values plus a hint (FR-013).
-- **OC-004 (Privacy boundary)**: The serial number and unique device identifiers
-  appear in `text`, `json`, `yaml`, `markdown`, and `simple`, and MUST be absent
-  from `public`. Any future change to where identifiers appear MUST update this
-  contract and the privacy tests.
+- **OC-004 (Privacy boundary)**: The `public` format MUST exclude three classes
+  of sensitive data: (1) the serial number, (2) unique device identifiers
+  (hardware/provisioning UUID, device identifier), and (3) network identifiers
+  (Wi-Fi/Bluetooth MAC addresses, hostname). This exclusion applies even to
+  fields not surfaced in `public` today — if any are later added, they MUST NOT
+  appear in `public`. The serial number and unique device identifiers MAY appear
+  in `text`, `json`, `yaml`, `markdown`, and `simple`. Any future change to
+  where identifiers appear MUST update this contract and the privacy tests.
 - **OC-005**: This specification documents existing behavior; it introduces no
   new contract changes beyond recording the current v0.2.2 surface as the
   baseline.
@@ -269,7 +296,8 @@ string is printed.
 - **SC-002**: `--format json` output parses as valid JSON and `--format yaml`
   output parses as valid YAML, every time, with no manual cleanup.
 - **SC-003**: `--format public` output contains zero occurrences of the device
-  serial number or unique device identifiers across all tested machines.
+  serial number, unique device identifiers, or network identifiers (MAC
+  addresses, hostname) across all tested machines.
 - **SC-004**: Each raw flag (`--hardware-info`, `--power-info`,
   `--graphics-info`, `--storage-info`, `--memory-info`, `--audio-info`,
   `--network-info`) prints the corresponding source output without invoking the
@@ -282,6 +310,10 @@ string is printed.
 - **SC-007**: A user can identify the Mac model, condition (battery health and
   cycle count), and key specs from the default report without consulting any
   other tool.
+- **SC-008**: There is no hard runtime gate. End-to-end latency is dominated by
+  the underlying macOS source commands (notably `system_profiler`), so the tool
+  is held to "completes without hanging" rather than a fixed time budget. A
+  regression is a hang or failure to terminate, not exceeding a second count.
 
 ## Assumptions
 
@@ -295,6 +327,11 @@ string is printed.
   propose new flags, formats, or fields.
 - Output is consumed locally; the tool does not transmit data off the device and
   no network credentials or secrets are involved.
-- "Unique device identifiers" for the privacy boundary means at least the serial
-  number; provisioning/hardware UUIDs, if ever surfaced, fall under the same
-  `public`-format exclusion.
+- The `public`-format privacy boundary covers three classes of data — serial
+  number, unique device identifiers (hardware/provisioning UUID, device
+  identifier), and network identifiers (Wi-Fi/Bluetooth MAC addresses, hostname)
+  — per the Clarifications session. Some of these are not surfaced in any format
+  today; the exclusion is forward-looking so future fields cannot leak into
+  `public`.
+- Runtime performance is not gated by a fixed time budget (see SC-008); the tool
+  inherits the latency of the macOS source commands it calls.
