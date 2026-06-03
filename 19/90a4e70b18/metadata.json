@@ -1,0 +1,27 @@
+{
+  "cli_version": "0.4.2",
+  "checkpoint_id": "1990a4e70b18",
+  "strategy": "manual-commit",
+  "branch": "001-mac-info-cli",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "specs/001-mac-info-cli/plan.md",
+    "specs/001-mac-info-cli/tasks.md"
+  ],
+  "sessions": [
+    {
+      "metadata": "/19/90a4e70b18/0/metadata.json",
+      "transcript": "/19/90a4e70b18/0/full.jsonl",
+      "context": "/19/90a4e70b18/0/context.md",
+      "content_hash": "/19/90a4e70b18/0/content_hash.txt",
+      "prompt": "/19/90a4e70b18/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 427,
+    "cache_creation_tokens": 147910,
+    "cache_read_tokens": 3141077,
+    "output_tokens": 16092,
+    "api_call_count": 20
+  }
+}
